@@ -569,33 +569,25 @@ const S = {
 //  BOOT
 // ══════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
-  // Restore URL
-  if (S.apiUrl) $$('settings-url').textContent = S.apiUrl;
+  // 1. 強制隱藏藍色閃屏
+  const splash = document.getElementById('splash');
+  if (splash) splash.style.display = 'none';
 
-  if (!S.apiUrl) {
-    // First run — ask for URL
-    hide('splash');
-    const url = prompt(
-      '首次使用：請貼入您的 Google Apps Script 部署網址\n' +
-      '（格式：https://script.google.com/macros/s/…/exec）'
-    );
-    if (url && url.startsWith('https://')) {
+  // 2. 檢查 API URL 是否存在
+  if (!S.apiUrl || S.apiUrl.includes('library')) {
+    const url = prompt('API 網址錯誤，請重新貼入 /exec 結尾的網址：');
+    if (url) {
       S.apiUrl = url.trim();
       localStorage.setItem('inv_url', S.apiUrl);
-      $$('settings-url').textContent = S.apiUrl;
-    } else {
-      show('login-screen');
-      hide('splash');
-      return;
     }
   }
 
-  hide('splash');
-
+  // 3. 判斷要進入登入畫面還是主程式
   if (S.user) {
+    document.getElementById('app').style.display = 'flex'; // 強制顯示主程式
     launchApp();
   } else {
-    show('login-screen');
+    document.getElementById('login-screen').classList.remove('hidden'); // 強制顯示登入
   }
 });
 
