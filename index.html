@@ -618,29 +618,48 @@ async function boot(){
 let tokenClient = null;
 
 function handleGoogleLogin(){
-  if(!state.gsiReady){ toast('Google 登入服務尚未就緒，請稍候再試','error'); return; }
+  if(!state.gsiReady){ 
+    toast('Google 服務尚未就緒，請稍候再試','error'); 
+    return; 
+  }
+  
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CONFIG.CLIENT_ID,
     scope: CONFIG.SCOPES,
-    callback: onTokenReceived,
+    callback: onTokenReceived, // 確保登入後執行下面這個函式
   });
-  tokenClient.requestAccessToken({ prompt:'consent' });
+  
+  tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
 function onTokenReceived(resp){
-  if(resp.error){ toast('登入失敗：'+resp.error,'error'); return; }
+  console.log("收到 Google 回傳：", resp); // 測試用：在電腦按 F12 可以看到這行
+  
+  if(resp.error){ 
+    toast('登入失敗：' + resp.error, 'error'); 
+    return; 
+  }
   
   state.accessToken = resp.access_token;
   gapi.client.setToken({ access_token: resp.access_token });
   localStorage.setItem('gs_token', resp.access_token);
 
-  // 【核心修正】這幾行負責把登入按鈕變不見，把名字選單變出來
-  document.getElementById('google-login-btn').classList.add('hidden'); // 隱藏登入按鈕
-  document.getElementById('name-select-wrap').classList.remove('hidden'); // 顯示選擇名字
+  // 1. 先處理畫面切換
+  const loginBtn = document.getElementById('google-login-btn');
+  const nameWrap = document.getElementById('name-select-wrap');
   
-  toast('登入成功，請選擇您的名字', 'success');
-}
-
+  if (loginBtn) loginBtn.classList.add('hidden'); 
+  if (nameWrap) nameWrap.classList.remove('hidden'); 
+  
+  // 2. 如果使用者以前選過名字，可以直接進 App
+  if (state.currentUser) {
+    const nameSelect = document.getElementById('user-name-select');
+    if (nameSelect) nameSelect.value = state.currentUser;
+    confirmName(); 
+  } else {
+    toast('登入成功，請選擇您的名字', 'success');
+  }
+} // ⬅️ 確保這裡有這個關閉的花括號
 async function launchApp(){
   show('app');
   document.getElementById('user-display-name').textContent = state.currentUser;
