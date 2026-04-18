@@ -7,266 +7,1569 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a73e8">
 <title>資產盤點系統 Pro</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-/* ═══ TOKENS ══════════════════════════════════════════════ */
-:root{
-  --pri:#1a73e8; --pri-d:#1557b0; --pri-l:#e8f0fe;
-  --green:#0f9d58; --green-l:#e6f4ea;
-  --red:#d93025;   --red-l:#fce8e6;
-  --yellow:#e37400;--yellow-l:#fef7e0;
-  --orange:#e8710a;--orange-l:#fce8d5;
-  --bg:#f0f4ff; --surface:#ffffff;
-  --border:#dadce0; --border2:#e8eaed;
-  --text:#202124; --text2:#5f6368; --text3:#9aa0a6;
-  --shadow:0 1px 4px rgba(60,64,67,.18),0 2px 8px rgba(60,64,67,.1);
-  --shadow-lg:0 4px 20px rgba(60,64,67,.22);
-  --r:14px; --r-sm:10px; --r-lg:20px;
-  --mono:'JetBrains Mono',monospace;
-  --body:'Noto Sans TC',sans-serif;
-  --bar-h:56px; --nav-h:64px;
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════════ */
+:root {
+  --pri:    #1a73e8;
+  --pri-d:  #1557b0;
+  --pri-l:  #e8f0fe;
+  --green:  #0f9d58;
+  --green-l:#e6f4ea;
+  --red:    #d93025;
+  --red-l:  #fce8e6;
+  --yellow: #e37400;
+  --yellow-l:#fef7e0;
+  --orange: #e8710a;
+  --orange-l:#fce8d5;
+  --bg:     #f0f4ff;
+  --surface:#ffffff;
+  --border: #dadce0;
+  --border2:#e8eaed;
+  --text:   #202124;
+  --text2:  #5f6368;
+  --text3:  #9aa0a6;
+  --shadow: 0 1px 4px rgba(60,64,67,.18), 0 2px 8px rgba(60,64,67,.10);
+  --shadow-lg: 0 4px 20px rgba(60,64,67,.22);
+  --r:    14px;
+  --r-sm: 10px;
+  --r-lg: 20px;
+  --mono: 'JetBrains Mono', monospace;
+  --body: 'Noto Sans TC', sans-serif;
+  --bar-h: 56px;
+  --nav-h: 64px;
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;overflow:hidden;} 
-body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
 
-.hidden{display:none!important;}
-.flex{display:flex;align-items:center;}
-.w-full{width:100%;}
-.spinner{width:22px;height:22px;border:2.5px solid var(--border);border-top-color:var(--pri);border-radius:50%;animation:spin .7s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
-@keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:none;opacity:1;}}
+/* ── RESET ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--body); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
-/* ── INPUTS ── */
-input,select,textarea{font-family:var(--body);font-size:15px;padding:12px;border:1.5px solid var(--border);border-radius:var(--r-sm);outline:none;width:100%;}
-input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(26,115,232,.1);}
+/* ── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-/* ── BUTTONS ── */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:12px 20px;border-radius:var(--r-sm);font-weight:700;cursor:pointer;border:none;transition:all .15s;}
-.btn-primary{background:var(--pri);color:#fff;}
-.btn-green{background:var(--green);color:#fff;}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2);}
-.btn-sm{min-height:36px;padding:8px 15px;font-size:13px;}
+/* ── ANIMATIONS ────────────────────────────────────────── */
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes slideUp  { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes spin     { to   { transform: rotate(360deg); } }
+@keyframes shimmer  { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
-/* ── UI COMPONENTS ── */
-#splash{position:fixed;inset:0;background:var(--pri);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:#fff;}
-#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;}
-.login-card{background:#fff;border-radius:24px;padding:36px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);text-align:center;}
+/* ── UTILITIES ─────────────────────────────────────────── */
+.hidden { display: none !important; }
+.w-full { width: 100%; }
+.flex   { display: flex; align-items: center; }
+.spinner {
+  width: 24px; height: 24px;
+  border: 2.5px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+  flex-shrink: 0;
+}
+.spinner-dark {
+  border-color: var(--border);
+  border-top-color: var(--pri);
+}
+.spinner-sm { width: 16px; height: 16px; border-width: 2px; }
 
-#app{display:none;position:fixed;inset:0;flex-direction:column;}
-.topbar{height:var(--bar-h);background:#fff;border-bottom:1px solid var(--border2);padding:0 16px;display:flex;align-items:center;justify-content:space-between;z-index:100;}
-.content-area{flex:1;overflow-y:auto;padding-bottom:20px;}
+/* ── INPUTS ────────────────────────────────────────────── */
+input, select, textarea {
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 13px 15px;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--pri);
+  box-shadow: 0 0 0 3px rgba(26,115,232,.16);
+}
+textarea { resize: none; min-height: 80px; line-height: 1.6; }
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235f6368' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
 
-.filter-strip{background:#fff;padding:12px 16px;position:sticky;top:0;z-index:90;border-bottom:1px solid var(--border2);}
-.chip-row{display:flex;gap:8px;overflow-x:auto;padding:4px 0;}
-.chip{padding:8px 16px;border-radius:99px;font-size:13px;font-weight:600;border:1.5px solid var(--border);white-space:nowrap;cursor:pointer;}
-.chip.active{background:var(--pri-l);border-color:var(--pri);color:var(--pri);}
+/* ── BUTTONS ───────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border-radius: var(--r-sm);
+  font-family: var(--body);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .55; cursor: not-allowed; pointer-events: none; }
+.btn-primary   { background: var(--pri);   color: #fff; }
+.btn-primary:hover { background: var(--pri-d); }
+.btn-green     { background: var(--green); color: #fff; }
+.btn-green:hover   { background: #0b8043; }
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1.5px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--pri); color: var(--pri); }
+.btn-icon {
+  min-height: 44px; min-width: 44px;
+  padding: 0; border-radius: 50%;
+  background: transparent; border: none;
+  color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; transition: background .15s;
+}
+.btn-icon:hover { background: var(--border2); }
+.btn-sm { min-height: 38px; padding: 8px 16px; font-size: 13px; }
+.btn-xs { min-height: 32px; padding: 5px 12px; font-size: 12px; border-radius: 8px; }
 
-.asset-list{padding:12px 16px;display:flex;flex-direction:column;gap:12px;}
-.asset-card{background:#fff;border-radius:var(--r);border:1.5px solid var(--border2);padding:15px;box-shadow:var(--shadow);position:relative;}
-.status-badge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;float:right;}
-.sb-pending{background:var(--yellow-l);color:var(--yellow);}
-.sb-checked{background:var(--green-l);color:var(--green);}
+/* ══════════════════════════════════════════════════════════
+   SPLASH
+══════════════════════════════════════════════════════════ */
+#splash {
+  position: fixed; inset: 0; z-index: 9999;
+  background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; color: #fff;
+}
+#splash .splash-icon { font-size: 64px; }
+#splash h1 { font-size: 24px; font-weight: 900; letter-spacing: -.02em; }
+#splash p  { font-size: 14px; opacity: .75; }
 
-.bottom-nav{height:var(--nav-h);background:#fff;border-top:1px solid var(--border2);display:flex;}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text3);border:none;background:none;}
-.nav-btn.active{color:var(--pri);}
+/* ══════════════════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════════════════ */
+#login-screen {
+  position: fixed; inset: 0; z-index: 200;
+  background: linear-gradient(160deg, #e8f0fe 0%, #f8faff 60%, #e6f4ea 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.login-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 40px 36px;
+  width: 100%; max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  animation: fadeUp .4s ease;
+}
+.login-card .lc-icon { font-size: 56px; margin-bottom: 10px; }
+.login-card h1 { font-size: 22px; font-weight: 900; margin-bottom: 4px; letter-spacing: -.02em; }
+.login-card .lc-sub { font-size: 13px; color: var(--text2); margin-bottom: 28px; line-height: 1.6; }
+.login-card label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; text-align: left; }
 
-.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;display:flex;align-items:flex-end;}
-.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;padding:20px;max-height:90%;overflow-y:auto;animation:slideUp 0.3s;}
+/* ══════════════════════════════════════════════════════════
+   APP SHELL
+══════════════════════════════════════════════════════════ */
+#app {
+  display: none;
+  position: fixed; inset: 0;
+  flex-direction: column;
+}
 
-.toast-stack{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:1000;width:90%;max-width:400px;display:flex;flex-direction:column;gap:8px;}
-.toast{background:#323232;color:#fff;padding:12px 16px;border-radius:8px;font-size:14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);}
+/* ── TOP BAR ───────────────────────────────────────────── */
+.topbar {
+  height: var(--bar-h);
+  background: #fff;
+  border-bottom: 1px solid var(--border2);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  flex-shrink: 0;
+  z-index: 100;
+}
+.topbar-logo { font-size: 18px; font-weight: 900; color: var(--pri); letter-spacing: -.02em; }
+.topbar-logo span { color: var(--text2); font-weight: 400; font-size: 15px; }
+.topbar-sep { flex: 1; }
+.sync-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1.5px solid;
+  white-space: nowrap;
+}
+.sync-badge.idle    { color: var(--green);  border-color: rgba(15,157,88,.3);  background: var(--green-l); }
+.sync-badge.syncing { color: var(--yellow); border-color: rgba(227,116,0,.3);  background: var(--yellow-l); animation: spin 1.2s linear infinite; }
+.sync-badge.error   { color: var(--red);    border-color: rgba(217,48,37,.3);  background: var(--red-l); }
+.user-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--pri-l); border-radius: 99px;
+  padding: 5px 13px 5px 6px; cursor: pointer;
+}
+.user-pill:hover { background: #d2e3fc; }
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--pri); color: #fff;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.user-name { font-size: 13px; font-weight: 700; color: var(--pri); }
 
-@media(min-width:768px){ .asset-list, .filter-strip {max-width:720px; margin:auto;} }
+/* ── SCROLLABLE AREA ───────────────────────────────────── */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── PAGES ─────────────────────────────────────────────── */
+.page { display: none; padding-bottom: 16px; }
+.page.active { display: block; animation: fadeUp .22s ease; }
+
+/* ══════════════════════════════════════════════════════════
+   FILTER STRIP
+══════════════════════════════════════════════════════════ */
+.filter-strip {
+  background: #fff;
+  border-bottom: 1px solid var(--border2);
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  position: sticky; top: 0; z-index: 90;
+}
+.search-box { position: relative; }
+.search-box input {
+  padding-left: 44px;
+  font-size: 14px;
+  background: #f1f3f4;
+  border-color: #f1f3f4;
+  border-radius: 99px;
+}
+.search-box input:focus { background: #fff; border-color: var(--pri); }
+.search-icon {
+  position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px; color: var(--text3);
+  pointer-events: none;
+}
+.chip-row {
+  display: flex; gap: 8px;
+  overflow-x: auto; padding-bottom: 2px;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 16px; border-radius: 99px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  border: 1.5px solid var(--border);
+  background: #fff; color: var(--text2);
+  transition: all .15s; min-height: 38px;
+}
+.chip:hover { border-color: var(--pri); color: var(--pri); }
+.chip.active { background: var(--pri-l); border-color: var(--pri); color: var(--pri); }
+.my-tasks-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.my-tasks-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+/* toggle switch */
+.toggle-wrap { position: relative; width: 46px; height: 26px; cursor: pointer; }
+.toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: var(--border); border-radius: 99px; transition: .2s;
+}
+.toggle-thumb {
+  position: absolute; width: 20px; height: 20px;
+  background: #fff; border-radius: 50%;
+  left: 3px; top: 3px; transition: .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.toggle-wrap input:checked ~ .toggle-track { background: var(--pri); }
+.toggle-wrap input:checked ~ .toggle-thumb { transform: translateX(20px); }
+
+/* ══════════════════════════════════════════════════════════
+   PROGRESS BAR
+══════════════════════════════════════════════════════════ */
+.prog-block {
+  padding: 10px 16px 8px;
+  background: #fff;
+  border-bottom: 1px solid var(--border2);
+}
+.prog-meta {
+  display: flex; justify-content: space-between;
+  font-size: 12px; font-weight: 600; color: var(--text2);
+  margin-bottom: 6px;
+}
+.prog-meta span:last-child { color: var(--pri); }
+.prog-track {
+  height: 7px; background: #e8eaed;
+  border-radius: 99px; overflow: hidden;
+}
+.prog-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--pri), var(--green));
+  transition: width .6s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ASSET CARDS
+══════════════════════════════════════════════════════════ */
+.asset-list {
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.asset-card {
+  background: #fff;
+  border-radius: var(--r);
+  border: 1.5px solid var(--border2);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  cursor: pointer;
+}
+.asset-card:hover {
+  border-color: var(--pri);
+  box-shadow: 0 4px 16px rgba(26,115,232,.14);
+}
+.asset-card:active { transform: scale(.99); }
+/* status left-border accent */
+.card-s-checked { border-left: 4px solid var(--green); }
+.card-s-pending  { border-left: 4px solid var(--yellow); }
+.card-s-missing  { border-left: 4px solid var(--red); }
+.card-s-damaged  { border-left: 4px solid var(--orange); }
+
+.card-top {
+  padding: 13px 15px 0;
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 8px;
+}
+.card-sn {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--text3); background: #f1f3f4;
+  padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+}
+.status-badge {
+  font-size: 11px; font-weight: 800;
+  padding: 4px 11px; border-radius: 99px; white-space: nowrap;
+}
+.sb-checked { background: var(--green-l);  color: var(--green); }
+.sb-pending { background: var(--yellow-l); color: var(--yellow); }
+.sb-missing { background: var(--red-l);    color: var(--red); }
+.sb-damaged { background: var(--orange-l); color: var(--orange); }
+
+.card-body { padding: 10px 15px 13px; }
+.card-name { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 7px; line-height: 1.3; }
+.card-rows { display: flex; flex-direction: column; gap: 4px; }
+.card-row  { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 7px; }
+.card-row-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.card-loc  { font-weight: 700; color: var(--pri); }
+.assignee-chip {
+  background: var(--pri-l); color: var(--pri);
+  font-size: 12px; font-weight: 700;
+  padding: 2px 9px; border-radius: 99px;
+}
+.card-photo-thumb {
+  width: 100%; max-height: 180px; object-fit: cover;
+  display: block; border-top: 1px solid var(--border2);
+}
+.card-footer {
+  padding: 10px 15px;
+  border-top: 1px solid var(--border2);
+  background: #fafafa;
+  display: flex; gap: 8px; align-items: center;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOTTOM NAVIGATION
+══════════════════════════════════════════════════════════ */
+.bottom-nav {
+  height: var(--nav-h);
+  background: #fff;
+  border-top: 1px solid var(--border2);
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  flex-shrink: 0;
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px; cursor: pointer;
+  color: var(--text3); font-size: 11px; font-weight: 600;
+  background: transparent; border: none;
+  padding: 8px 4px; transition: color .15s;
+}
+.nav-btn.active { color: var(--pri); }
+.nav-btn .ni { font-size: 23px; line-height: 1; }
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD STATS
+══════════════════════════════════════════════════════════ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px; padding: 16px;
+}
+@media (min-width: 600px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+.stat-card {
+  background: #fff; border-radius: var(--r);
+  padding: 18px 16px; border: 1.5px solid var(--border2);
+  text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.stat-n { font-size: 30px; font-weight: 900; font-family: var(--mono); margin-bottom: 5px; }
+.stat-l { font-size: 12px; font-weight: 600; color: var(--text2); }
+
+.dash-section {
+  margin: 0 16px 14px;
+  background: #fff; border-radius: var(--r);
+  border: 1.5px solid var(--border2); overflow: hidden;
+}
+.dash-section-hd {
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 14px 16px 0;
+}
+.dash-row {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.dash-row:last-child { border-bottom: none; }
+.dash-row-label { font-size: 14px; font-weight: 700; }
+.dash-row-sub   { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* member mini-progress */
+.member-prog-bar {
+  width: 72px; height: 6px; background: #e8eaed;
+  border-radius: 99px; overflow: hidden; flex-shrink: 0;
+}
+.member-prog-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--pri), var(--green));
+  transition: width .4s;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════════════════ */
+.settings-block {
+  margin: 12px 16px;
+  background: #fff; border-radius: var(--r);
+  border: 1.5px solid var(--border2); overflow: hidden;
+}
+.settings-row {
+  padding: 15px 16px; border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: 14px; font-weight: 700; }
+.settings-row-sub   { font-size: 12px; color: var(--text2); margin-top: 2px; word-break: break-all; }
+
+/* ══════════════════════════════════════════════════════════
+   BOTTOM SHEET (Detail / Edit)
+══════════════════════════════════════════════════════════ */
+.sheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 300;
+  display: flex; align-items: flex-end;
+}
+.sheet {
+  background: #fff;
+  border-radius: 26px 26px 0 0;
+  width: 100%;
+  max-height: 92dvh;
+  display: flex; flex-direction: column;
+  animation: slideUp .3s cubic-bezier(.4, 0, .2, 1);
+}
+.sheet-handle {
+  width: 40px; height: 4px;
+  background: var(--border); border-radius: 2px;
+  margin: 14px auto 0; flex-shrink: 0;
+}
+.sheet-hd {
+  padding: 14px 18px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border2); flex-shrink: 0;
+}
+.sheet-title { font-size: 17px; font-weight: 900; color: var(--text); }
+.sheet-body {
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 20px 18px;
+  display: flex; flex-direction: column; gap: 18px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 24px);
+}
+/* field elements inside sheet */
+.fl { display: block; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 7px; }
+.fv { font-size: 15px; color: var(--text); padding: 11px 0; border-bottom: 1px solid var(--border2); }
+.fv.hi { color: var(--pri); font-weight: 700; font-family: var(--mono); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 360px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* status chooser */
+.status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.status-opt {
+  padding: 13px 10px; border-radius: var(--r-sm);
+  border: 2px solid var(--border2); text-align: center;
+  cursor: pointer; font-size: 14px; font-weight: 700;
+  transition: all .15s; line-height: 1.3;
+}
+.status-opt:hover { border-color: var(--pri); }
+.sop-checked { background: var(--green-l);  color: var(--green);  border-color: var(--green); }
+.sop-pending { background: var(--yellow-l); color: var(--yellow); border-color: var(--yellow); }
+.sop-missing { background: var(--red-l);    color: var(--red);    border-color: var(--red); }
+.sop-damaged { background: var(--orange-l); color: var(--orange); border-color: var(--orange); }
+
+/* photo upload */
+.photo-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--r-sm); padding: 24px 16px;
+  text-align: center; cursor: pointer;
+  position: relative; transition: all .2s;
+}
+.photo-drop:hover, .photo-drop.over {
+  border-color: var(--pri); background: var(--pri-l);
+}
+.photo-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo-drop-icon { font-size: 30px; margin-bottom: 8px; }
+.photo-drop-text { font-size: 14px; color: var(--text2); font-weight: 500; }
+.photo-drop-sub  { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.upload-status-bar {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text2);
+  padding: 10px; background: var(--yellow-l);
+  border-radius: var(--r-sm);
+}
+.photo-result-wrap { display: flex; flex-direction: column; gap: 8px; }
+.photo-result-wrap img {
+  width: 100%; border-radius: var(--r-sm);
+  max-height: 200px; object-fit: cover;
+  border: 1px solid var(--border2);
+}
+.photo-link { font-size: 12px; color: var(--pri); word-break: break-all; text-decoration: underline; }
+
+/* ══════════════════════════════════════════════════════════
+   IMPORT MODAL
+══════════════════════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: #fff; border-radius: var(--r-lg);
+  width: 100%; max-width: 460px;
+  max-height: 82dvh; overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+.modal-hd {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.modal-title { font-size: 17px; font-weight: 800; }
+.modal-x {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: var(--border2);
+  color: var(--text2); cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-x:hover { background: var(--border); }
+.modal-body { padding: 20px 22px; }
+.import-result {
+  background: #f8faff; border-radius: var(--r-sm);
+  padding: 14px; font-family: var(--mono);
+  font-size: 13px; line-height: 2.2;
+}
+.ir-ok  { color: var(--green); }
+.ir-upd { color: var(--pri); }
+.ir-sk  { color: var(--yellow); }
+.ir-err { color: var(--red); }
+
+/* ══════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════ */
+.toast-stack {
+  position: fixed; top: 68px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: calc(100% - 32px); max-width: 400px;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: #323232; color: #fff;
+  border-radius: var(--r-sm); padding: 13px 16px;
+  font-size: 14px; font-weight: 500;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  animation: fadeUp .25s ease;
+  pointer-events: auto;
+}
+.toast.ok   { background: var(--green); }
+.toast.err  { background: var(--red); }
+.toast.warn { background: var(--yellow); }
+
+/* ── EMPTY STATE ───────────────────────────────────────── */
+.empty {
+  text-align: center; padding: 60px 24px;
+}
+.empty-icon  { font-size: 52px; margin-bottom: 12px; opacity: .45; }
+.empty-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.empty-sub   { font-size: 14px; color: var(--text2); line-height: 1.6; }
+
+/* ── RESPONSIVE ────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .asset-list, .filter-strip, .prog-block { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .sheet { max-width: 520px; border-radius: 24px; margin-bottom: 20px; }
+  .sheet-overlay { align-items: center; }
+  .bottom-nav { max-width: 720px; left: 50%; transform: translateX(-50%); border-radius: 16px 16px 0 0; border-left: 1px solid var(--border2); border-right: 1px solid var(--border2); }
+}
 </style>
 </head>
 <body>
 
+<!-- ═══ SPLASH ════════════════════════════════════════════ -->
 <div id="splash">
-  <div style="font-size:60px">📋</div>
-  <h2>資產盤點系統</h2>
-  <p>正在連線至雲端資料庫...</p>
-  <div class="spinner" style="margin-top:15px"></div>
+  <div class="splash-icon">📋</div>
+  <h1>資產盤點系統</h1>
+  <p>正在連線至雲端資料庫…</p>
+  <div class="spinner" style="margin-top:8px;"></div>
 </div>
 
+<!-- ═══ LOGIN ═════════════════════════════════════════════ -->
 <div id="login-screen" class="hidden">
   <div class="login-card">
-    <div style="font-size:50px">👤</div>
-    <h2 style="margin:10px 0">歡迎使用</h2>
-    <p style="color:var(--text2);margin-bottom:20px">請選擇您的姓名以進入系統</p>
+    <div class="lc-icon">📋</div>
+    <h1>資產盤點系統</h1>
+    <div class="lc-sub">11 位人員協作盤點平台<br>請選擇您的名字以繼續</div>
+    <label>您是？</label>
     <select id="login-name">
-      <option value="">── 請選擇人員 ──</option>
-      <option>淳安</option><option>怡伶</option><option>淳瑜</option><option>曾晴</option><option>松霖</option>
-      <option>苡彣</option><option>珉瑄</option><option>佩玟</option><option>禹融</option><option>奕暄</option><option>雅欣</option>
+      <option value="">── 請選擇您的名字 ──</option>
+      <!-- MEMBERS 陣列會在 JS 中動態填入 -->
     </select>
-    <button class="btn btn-primary w-full" style="margin-top:15px" onclick="doLogin()">進入系統</button>
+    <button class="btn btn-primary w-full" style="margin-top:16px;" onclick="doLogin()">
+      進入系統
+    </button>
   </div>
 </div>
 
+<!-- ═══ APP ═══════════════════════════════════════════════ -->
 <div id="app">
+
+  <!-- Top Bar -->
   <div class="topbar">
-    <div style="font-weight:900;color:var(--pri)">盤點 Pro</div>
-    <div id="user-display" class="flex" style="gap:8px;font-size:13px;font-weight:700">
-      <span id="user-name-label"></span>
-      <button class="btn btn-ghost btn-sm" onclick="doLogout()">登出</button>
+    <div class="topbar-logo">盤點<span> Pro</span></div>
+    <div class="topbar-sep"></div>
+    <div class="sync-badge idle" id="sync-badge">● 就緒</div>
+    <div class="user-pill" onclick="doLogout()" title="點擊登出">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div class="user-name"   id="user-name-label">—</div>
     </div>
   </div>
 
-  <div class="content-area">
+  <!-- Content -->
+  <div class="content-area" id="content-area">
+
+    <!-- ── PAGE: 清單 ─────────────────────────────────── -->
     <div class="page active" id="page-list">
+
       <div class="filter-strip">
-        <input type="search" id="search-inp" placeholder="🔍 搜尋名稱、編號或地點..." oninput="applyFilter()">
-        <div class="chip-row">
-          <div class="chip active" onclick="setFilter('all', this)">全部</div>
-          <div class="chip" onclick="setFilter('待盤點', this)">🕐 待盤點</div>
-          <div class="chip" onclick="setFilter('已盤點', this)">✅ 已盤點</div>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="search-inp"
+            placeholder="搜尋名稱、財產編號、地點…"
+            oninput="scheduleFilter()">
+        </div>
+        <div class="chip-row" id="chip-row">
+          <div class="chip active" data-f="all"      onclick="setChip('all',this)">全部</div>
+          <div class="chip"        data-f="待盤點"    onclick="setChip('待盤點',this)">🕐 待盤點</div>
+          <div class="chip"        data-f="已盤點"    onclick="setChip('已盤點',this)">✅ 已盤點</div>
+          <div class="chip"        data-f="資產遺失"  onclick="setChip('資產遺失',this)">❌ 遺失</div>
+          <div class="chip"        data-f="設備損壞"  onclick="setChip('設備損壞',this)">⚠️ 損壞</div>
+        </div>
+        <div class="my-tasks-row">
+          <span class="my-tasks-label">只顯示我的任務</span>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="my-toggle" onchange="scheduleFilter()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
         </div>
       </div>
+
+      <!-- Progress -->
+      <div class="prog-block" id="prog-block">
+        <div class="prog-meta">
+          <span id="prog-label">盤點進度</span>
+          <span id="prog-count">0 / 0</span>
+        </div>
+        <div class="prog-track">
+          <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Cards -->
       <div class="asset-list" id="asset-list"></div>
     </div>
-  </div>
 
+    <!-- ── PAGE: 統計 ─────────────────────────────────── -->
+    <div class="page hidden" id="page-dash">
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div class="dash-section">
+        <div class="dash-section-hd">資料管理</div>
+        <div class="dash-row">
+          <div>
+            <div class="dash-row-label">重新整理</div>
+            <div class="dash-row-sub">從 Google Sheets 重新載入</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadData(true)">🔄 刷新</button>
+        </div>
+        <div class="dash-row">
+          <div>
+            <div class="dash-row-label">匯出 Excel</div>
+            <div class="dash-row-sub">含所有欄位及照片連結</div>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="exportExcel()">📤 匯出</button>
+        </div>
+        <div class="dash-row">
+          <div>
+            <div class="dash-row-label">導入 Excel 總表</div>
+            <div class="dash-row-sub">批次寫入 Google Sheets</div>
+          </div>
+          <button class="btn btn-sm" style="background:var(--yellow);color:#fff;"
+            onclick="$('xl-file').click()">📥 導入</button>
+        </div>
+        <input type="file" id="xl-file" accept=".xlsx,.xls,.csv" class="hidden"
+          onchange="importExcel(this)">
+      </div>
+
+      <div class="dash-section" id="member-section">
+        <div class="dash-section-hd">各人員盤點進度</div>
+        <div id="member-progress"></div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: 設定 ─────────────────────────────────── -->
+    <div class="page hidden" id="page-settings">
+      <div class="settings-block">
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">目前使用者</div>
+            <div class="settings-row-sub" id="settings-user">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="doLogout()">切換 / 登出</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Apps Script 網址</div>
+            <div class="settings-row-sub" id="settings-url" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="editApiUrl()">修改</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">連線測試</div>
+            <div class="settings-row-sub" id="ping-result">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="pingServer()">Ping</button>
+        </div>
+      </div>
+      <div style="padding:12px 16px;font-size:12px;color:var(--text3);line-height:1.8;">
+        版本 v4.2 · Google Apps Script 架構 · 免 OAuth 登入<br>
+        資料儲存於 Google Sheets，照片存放於 Google Drive
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+
+  <!-- Bottom Nav -->
   <nav class="bottom-nav">
-    <button class="nav-btn active">📋<div>清單</div></button>
-    <button class="nav-btn" onclick="loadData(true)">🔄<div>刷新</div></button>
+    <button class="nav-btn active" id="nav-list" onclick="switchPage('list', this)">
+      <div class="ni">📋</div><div>清單</div>
+    </button>
+    <button class="nav-btn" id="nav-dash" onclick="switchPage('dash', this)">
+      <div class="ni">📊</div><div>統計</div>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="switchPage('settings', this)">
+      <div class="ni">⚙️</div><div>設定</div>
+    </button>
   </nav>
-</div>
+</div><!-- /app -->
 
-<div class="sheet-overlay hidden" id="sheet-overlay" onclick="closeSheet()">
-  <div class="sheet" onclick="event.stopPropagation()">
-    <h3 id="sheet-title">資產詳情</h3>
-    <div id="sheet-body" style="margin-top:15px"></div>
-    <button class="btn btn-ghost w-full" style="margin-top:20px" onclick="closeSheet()">關閉</button>
+<!-- ═══ DETAIL / EDIT BOTTOM SHEET ════════════════════════ -->
+<div class="sheet-overlay hidden" id="sheet-overlay" onclick="closeSheetOnBg(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-title" id="sheet-title">資產詳情</div>
+      <button class="btn-icon" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="sheet-body" id="sheet-body"></div>
   </div>
 </div>
 
+<!-- ═══ IMPORT MODAL ══════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="import-modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title">📥 Excel 導入</div>
+      <button class="modal-x" onclick="$('import-modal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-result" id="import-result"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm"
+          onclick="$('import-modal').classList.add('hidden')">取消</button>
+        <button class="btn btn-primary btn-sm hidden" id="import-push-btn"
+          onclick="pushImport()">⬆ 推送至試算表</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ══════════════════════════════════════════════ -->
 <div class="toast-stack" id="toast-stack"></div>
 
+<!-- ═══ JAVASCRIPT ════════════════════════════════════════ -->
 <script>
 'use strict';
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyqdIo6jqFAukwSodiyM4m_GoIS1JrsVJmBJUQq8gqjczMsQ-u03lGXYiCvO8vv9qzV/exec';
-const S = {
-  user: localStorage.getItem('inv_user') || '',
-  assets: [],
-  filtered: [],
-  filterSt: 'all'
+/* ══════════════════════════════════════════════════════════
+   ★ CONFIG — 修改這裡
+══════════════════════════════════════════════════════════ */
+const CONFIG = {
+  // 貼入您的 Apps Script 部署網址：
+  API_URL: 'https://script.google.com/macros/s/AKfycbyqdIo6jqFAukwSodiyM4m_GoIS1JrsVJmBJUQq8gqjczMsQ-u03lGXYiCvO8vv9qzV/exec',
+
+  // 盤點人員清單：
+  MEMBERS: ['淳安','怡伶','淳瑜','曾晴','松霖','苡彣','珉瑄','佩玟','禹融','奕暄','雅欣'],
 };
 
-const $$ = id => document.getElementById(id);
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+const S = {
+  user        : localStorage.getItem('inv_user') || '',
+  apiUrl      : localStorage.getItem('inv_url')  || CONFIG.API_URL,
+  assets      : [],
+  filtered    : [],
+  filterSt    : 'all',
+  editAsset   : null,
+  pendingPhoto: null,   // Drive URL received after upload
+  pendingImport: null,  // rows waiting to push
+};
 
-// ── BOOT ──
-window.addEventListener('DOMContentLoaded', async () => {
+/* ══════════════════════════════════════════════════════════
+   DOM SHORTHAND
+══════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+/* ══════════════════════════════════════════════════════════
+   API HELPERS  (fetch → GAS)
+══════════════════════════════════════════════════════════ */
+function getApiUrl() {
+  return S.apiUrl || CONFIG.API_URL;
+}
+
+async function apiFetch(url, opts) {
+  const resp = await fetch(url, { ...(opts || {}), redirect: 'follow' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const json = await resp.json();
+  if (!json.ok) throw new Error(json.error || '伺服器錯誤');
+  return json.data;
+}
+
+function apiGet(action) {
+  return apiFetch(getApiUrl() + '?action=' + action);
+}
+
+function apiPost(body) {
+  return apiFetch(getApiUrl(), {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify(body),
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', function () {
+  // Populate member select
+  var sel = $('login-name');
+  CONFIG.MEMBERS.forEach(function (m) {
+    var opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+
+  // Restore saved URL
+  if (S.apiUrl) { $('settings-url').textContent = S.apiUrl; }
+
   if (S.user) {
     launchApp();
   } else {
-    document.getElementById('splash').style.display = 'none';
-    document.getElementById('login-screen').classList.remove('hidden');
+    $('splash').classList.add('hidden');
+    $('login-screen').classList.remove('hidden');
   }
 });
 
+/* ══════════════════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════════════════ */
 function doLogin() {
-  const name = $$('login-name').value;
-  if (!name) return alert('請選擇名字');
+  var name = $('login-name').value;
+  if (!name) { toast('請選擇您的名字', 'warn'); return; }
   S.user = name;
   localStorage.setItem('inv_user', name);
-  location.reload();
+  $('login-screen').classList.add('hidden');
+  $('app').style.display = 'flex';
+  $('splash').classList.add('hidden');
+  initApp();
 }
 
 function doLogout() {
-  localStorage.clear();
+  localStorage.removeItem('inv_user');
   location.reload();
 }
 
-async function launchApp() {
-  $$('splash').style.display = 'none';
-  $$('app').style.display = 'flex';
-  $$('user-name-label').textContent = S.user;
-  loadData();
+function launchApp() {
+  $('splash').classList.add('hidden');
+  $('app').style.display = 'flex';
+  initApp();
 }
 
-async function loadData(showToast = false) {
+function initApp() {
+  $('user-avatar').textContent    = S.user ? S.user[0] : '?';
+  $('user-name-label').textContent = S.user;
+  $('settings-user').textContent  = S.user;
+  $('settings-url').textContent   = S.apiUrl || '（未設定）';
+  loadData(false);
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOAD DATA
+══════════════════════════════════════════════════════════ */
+async function loadData(showToast) {
+  if (!getApiUrl()) { toast('尚未設定 API 網址', 'err'); return; }
+  setSyncStatus('syncing', '⟳');
   try {
-    const resp = await fetch(API_URL + '?action=read', { redirect: 'follow' });
-    const json = await resp.json();
-    if (json.ok) {
-      S.assets = json.data;
-      applyFilter();
-      if(showToast) toast('資料已更新');
-    }
+    var data = await apiGet('read');
+    S.assets = Array.isArray(data) ? data : [];
+    setSyncStatus('idle', '● 已同步');
+    if (showToast) { toast('✅ 讀取完成：' + S.assets.length + ' 筆資產', 'ok'); }
+    applyFilter();
+    updateProgress();
+    if ($('page-dash').classList.contains('active')) { updateDashboard(); }
   } catch (e) {
-    toast('連線失敗: ' + e.message);
+    setSyncStatus('error', '⚠ 錯誤');
+    toast('讀取失敗：' + e.message, 'err');
+    renderEmpty('連線失敗，請檢查 API 網址或網路', '⚠️');
   }
 }
 
-function setFilter(st, el) {
-  S.filterSt = st;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+/* ══════════════════════════════════════════════════════════
+   FILTER  (requestAnimationFrame → zero-lag)
+══════════════════════════════════════════════════════════ */
+var _ft = null;
+function scheduleFilter() {
+  if (_ft) { cancelAnimationFrame(_ft); }
+  _ft = requestAnimationFrame(applyFilter);
+}
+
+function setChip(status, el) {
+  S.filterSt = status;
+  document.querySelectorAll('.chip').forEach(function (c) { c.classList.remove('active'); });
   el.classList.add('active');
   applyFilter();
 }
 
 function applyFilter() {
-  const q = ($$('search-inp').value || '').toLowerCase();
-  S.filtered = S.assets.filter(a => {
-    const matchQ = a.name.toLowerCase().includes(q) || (a.sn||'').toLowerCase().includes(q);
-    const matchSt = S.filterSt === 'all' || a.status === S.filterSt;
-    return matchQ && matchSt;
+  var q      = ($('search-inp').value || '').toLowerCase().trim();
+  var myOnly = $('my-toggle').checked;
+
+  S.filtered = S.assets.filter(function (a) {
+    if (S.filterSt !== 'all' && (a.status || '').trim() !== S.filterSt) { return false; }
+    if (myOnly && (a.assignee || '').trim() !== S.user) { return false; }
+    if (q) {
+      var inName = (a.name  || '').toLowerCase().includes(q);
+      var inSn   = (a.sn    || '').toLowerCase().includes(q);
+      var inLoc  = (a.loc   || '').toLowerCase().includes(q);
+      if (!inName && !inSn && !inLoc) { return false; }
+    }
+    return true;
   });
+
   renderList();
+  updateProgress();
 }
+
+/* ══════════════════════════════════════════════════════════
+   PROGRESS BAR
+══════════════════════════════════════════════════════════ */
+function updateProgress() {
+  var total = S.assets.length;
+  var done  = S.assets.filter(function (a) { return (a.status || '').trim() === '已盤點'; }).length;
+  var pct   = total > 0 ? Math.round(done / total * 100) : 0;
+  $('prog-fill').style.width    = pct + '%';
+  $('prog-count').textContent   = done + ' / ' + total;
+  $('prog-label').textContent   = '盤點進度 ' + pct + '%';
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER LIST
+══════════════════════════════════════════════════════════ */
+var STATUS_BADGE = {
+  '已盤點' : 'sb-checked',
+  '待盤點' : 'sb-pending',
+  '資產遺失': 'sb-missing',
+  '設備損壞': 'sb-damaged',
+};
+var CARD_BORDER = {
+  '已盤點' : 'card-s-checked',
+  '待盤點' : 'card-s-pending',
+  '資產遺失': 'card-s-missing',
+  '設備損壞': 'card-s-damaged',
+};
 
 function renderList() {
-  const list = $$('asset-list');
+  var list = $('asset-list');
   list.innerHTML = '';
-  if (S.filtered.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">查無資料</div>';
+
+  if (!S.filtered.length) {
+    renderEmpty(
+      S.assets.length ? '沒有符合條件的資產' : '尚無資料，請先導入或確認連線',
+      '📭'
+    );
     return;
   }
-  S.filtered.forEach(a => {
-    const card = document.createElement('div');
-    card.className = 'asset-card';
-    card.innerHTML = `
-      <span class="status-badge ${a.status==='已盤點'?'sb-checked':'sb-pending'}">${a.status}</span>
-      <div style="font-weight:900;font-size:16px">${a.name}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:5px">編號: ${a.sn || '—'}</div>
-      <div style="font-size:13px;color:var(--pri);margin-top:5px;font-weight:700">📍 ${a.loc || '未註記地點'}</div>
-    `;
-    card.onclick = () => openSheet(a);
-    list.appendChild(card);
+
+  var frag = document.createDocumentFragment();
+  S.filtered.forEach(function (a) { frag.appendChild(buildCard(a)); });
+  list.appendChild(frag);
+}
+
+function renderEmpty(msg, icon) {
+  $('asset-list').innerHTML =
+    '<div class="empty">' +
+    '<div class="empty-icon">' + (icon || '📭') + '</div>' +
+    '<div class="empty-title">' + esc(msg) + '</div>' +
+    '<div class="empty-sub">試試調整搜尋條件，或至統計頁刷新資料。</div>' +
+    '</div>';
+}
+
+function buildCard(a) {
+  var status = (a.status || '待盤點').trim();
+  var div    = document.createElement('div');
+  div.className = 'asset-card ' + (CARD_BORDER[status] || 'card-s-pending');
+
+  var photoHtml = a.photo
+    ? '<img class="card-photo-thumb" src="' + esc(a.photo) + '" loading="lazy" onerror="this.style.display=\'none\'" alt="照片">'
+    : '';
+
+  div.innerHTML =
+    '<div class="card-top">' +
+      '<div class="card-sn">' + esc(a.sn || '—') + '</div>' +
+      '<div class="status-badge ' + (STATUS_BADGE[status] || 'sb-pending') + '">' + esc(status) + '</div>' +
+    '</div>' +
+    '<div class="card-body">' +
+      '<div class="card-name">' + esc(a.name || '（未命名）') + '</div>' +
+      '<div class="card-rows">' +
+        (a.loc      ? '<div class="card-row"><span class="card-row-icon">📍</span><span class="card-loc">' + esc(a.loc) + '</span></div>' : '') +
+        (a.brand    ? '<div class="card-row"><span class="card-row-icon">🏷</span>' + esc(a.brand) + '</div>' : '') +
+        (a.assignee ? '<div class="card-row"><span class="card-row-icon">👤</span><span class="assignee-chip">' + esc(a.assignee) + '</span></div>' : '') +
+        (a.note     ? '<div class="card-row"><span class="card-row-icon">📝</span>' + esc(a.note) + '</div>' : '') +
+      '</div>' +
+    '</div>' +
+    photoHtml +
+    '<div class="card-footer">' +
+      '<button class="btn btn-primary btn-sm" onclick="openDetail(' + a.rowIndex + ')">📝 盤點 / 編輯</button>' +
+      (status !== '已盤點'
+        ? '<button class="btn btn-green btn-sm" onclick="quickCheck(' + a.rowIndex + ', event)">✅ 快速確認</button>'
+        : '') +
+    '</div>';
+
+  return div;
+}
+
+/* ══════════════════════════════════════════════════════════
+   QUICK CHECK
+══════════════════════════════════════════════════════════ */
+async function quickCheck(rowIndex, event) {
+  event.stopPropagation();
+  var a = S.assets.find(function (x) { return x.rowIndex === rowIndex; });
+  if (!a) { return; }
+
+  var prevStatus = a.status;
+  a.status   = '已盤點';
+  a.assignee = a.assignee || S.user;
+
+  try {
+    setSyncStatus('syncing', '⟳');
+    await apiPost({
+      action   : 'update',
+      rowIndex : rowIndex,
+      status   : '已盤點',
+      assignee : a.assignee,
+      note     : a.note,
+      photo    : a.photo,
+    });
+    setSyncStatus('idle', '● 已同步');
+    toast('✅ ' + a.name + ' 已確認', 'ok');
+    applyFilter();
+    updateProgress();
+  } catch (e) {
+    a.status = prevStatus; // rollback
+    setSyncStatus('error', '⚠');
+    toast('儲存失敗：' + e.message, 'err');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DETAIL SHEET
+══════════════════════════════════════════════════════════ */
+function openDetail(rowIndex) {
+  var a = S.assets.find(function (x) { return x.rowIndex === rowIndex; });
+  if (!a) { toast('找不到資產', 'err'); return; }
+
+  S.editAsset    = a;
+  S.pendingPhoto = null;
+  delete a._pendingStatus;
+
+  $('sheet-title').textContent = a.name || '資產詳情';
+  $('sheet-body').innerHTML    = buildDetailHTML(a);
+  $('sheet-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function buildDetailHTML(a) {
+  var status = (a.status || '待盤點').trim();
+  var statusOpts = [
+    { v: '已盤點',  cls: 'sop-checked', label: '✅ 已盤點' },
+    { v: '待盤點',  cls: 'sop-pending', label: '🕐 待盤點' },
+    { v: '資產遺失',cls: 'sop-missing', label: '❌ 資產遺失' },
+    { v: '設備損壞',cls: 'sop-damaged', label: '⚠️ 設備損壞' },
+  ];
+
+  var photoSection = '';
+  if (a.photo) {
+    photoSection =
+      '<div id="photo-result" class="photo-result-wrap">' +
+        '<img src="' + esc(a.photo) + '" onerror="this.style.display=\'none\'" alt="現有照片">' +
+        '<a class="photo-link" href="' + esc(a.photo) + '" target="_blank">🔗 查看原圖 (Drive)</a>' +
+      '</div>';
+  } else {
+    photoSection = '<div id="photo-result"></div>';
+  }
+
+  var memberOpts = CONFIG.MEMBERS.map(function (m) {
+    return '<option value="' + m + '"' + ((a.assignee || '').trim() === m ? ' selected' : '') + '>' + m + '</option>';
+  }).join('');
+
+  return (
+    '<div class="grid2">' +
+      '<div><label class="fl">序號</label><div class="fv">' + esc(a.seq || '—') + '</div></div>' +
+      '<div><label class="fl">財產編號</label><div class="fv hi">' + esc(a.sn || '—') + '</div></div>' +
+    '</div>' +
+
+    '<div><label class="fl">財產名稱</label>' +
+      '<div class="fv" style="font-size:17px;font-weight:800;">' + esc(a.name || '—') + '</div></div>' +
+
+    '<div class="grid2">' +
+      '<div><label class="fl">廠牌形式</label><div class="fv">' + esc(a.brand || '—') + '</div></div>' +
+      '<div><label class="fl">取得日期</label><div class="fv">' + esc(a.date  || '—') + '</div></div>' +
+      '<div><label class="fl">數量 / 單位</label><div class="fv">' + esc(a.qty || '1') + ' ' + esc(a.unit || '') + '</div></div>' +
+      '<div><label class="fl">存置地點</label><div class="fv" style="color:var(--pri);font-weight:700;">' + esc(a.loc || '—') + '</div></div>' +
+    '</div>' +
+
+    '<div><label class="fl">指派盤點人員</label>' +
+      '<select id="ed-assignee">' + memberOpts + '</select></div>' +
+
+    '<div><label class="fl">盤點狀態</label>' +
+      '<div class="status-grid">' +
+        statusOpts.map(function (o) {
+          return '<div class="status-opt ' + (status === o.v ? o.cls : '') + '" ' +
+            'data-v="' + o.v + '" data-cls="' + o.cls + '" onclick="pickStatus(this)">' +
+            o.label + '</div>';
+        }).join('') +
+      '</div></div>' +
+
+    '<div><label class="fl">地點備註</label>' +
+      '<textarea id="ed-note" placeholder="填寫地點說明、異常情況…（選填）">' + esc(a.note || '') + '</textarea></div>' +
+
+    '<div><label class="fl">財產照片</label>' +
+      photoSection +
+      '<div class="photo-drop" id="photo-drop" style="margin-top:10px;"' +
+        ' ondragover="event.preventDefault();this.classList.add(\'over\')"' +
+        ' ondragleave="this.classList.remove(\'over\')"' +
+        ' ondrop="handleDrop(event)">' +
+        '<input type="file" accept="image/*" capture="environment" onchange="handlePhotoFile(this.files[0])">' +
+        '<div class="photo-drop-icon">📷</div>' +
+        '<div class="photo-drop-text">' + (a.photo ? '重新拍攝或更換照片' : '點擊拍照 / 選擇圖片') + '</div>' +
+        '<div class="photo-drop-sub">照片將上傳至 Google Drive，存連結非 Base64</div>' +
+      '</div>' +
+      '<div id="upload-status"></div></div>' +
+
+    '<button class="btn btn-primary w-full" style="font-size:16px;min-height:52px;" onclick="saveDetail()">' +
+      '💾 儲存盤點結果</button>' +
+    '<div style="height:8px;"></div>'
+  );
+}
+
+function pickStatus(el) {
+  document.querySelectorAll('.status-opt').forEach(function (o) {
+    o.className = 'status-opt';
+  });
+  el.className = 'status-opt ' + el.dataset.cls;
+  S.editAsset._pendingStatus = el.dataset.v;
+}
+
+/* ── Photo upload ─────────────────────────────────────── */
+function handleDrop(e) {
+  e.preventDefault();
+  var pd = $('photo-drop');
+  if (pd) { pd.classList.remove('over'); }
+  var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) { handlePhotoFile(file); }
+}
+
+async function handlePhotoFile(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    toast('請選擇圖片檔案', 'warn'); return;
+  }
+  var statusEl = $('upload-status');
+  statusEl.innerHTML =
+    '<div class="upload-status-bar">' +
+    '<div class="spinner spinner-dark spinner-sm"></div>' +
+    ' 上傳照片至 Google Drive…</div>';
+
+  try {
+    var b64  = await fileToB64(file);
+    var raw  = b64.split(',')[1];
+    var data = await apiPost({
+      action  : 'uploadPhoto',
+      base64  : raw,
+      mimeType: file.type,
+      fileName: Date.now() + '_' + file.name,
+    });
+
+    S.pendingPhoto = data.url;
+    statusEl.innerHTML = '<div style="color:var(--green);font-size:13px;margin-top:6px;">✅ 上傳成功</div>';
+
+    $('photo-result').innerHTML =
+      '<div class="photo-result-wrap">' +
+        '<img src="' + esc(data.url) + '" onerror="this.style.display=\'none\'" alt="新照片">' +
+        '<a class="photo-link" href="' + esc(data.url) + '" target="_blank">🔗 查看原圖 (Drive)</a>' +
+      '</div>';
+
+    toast('照片上傳成功', 'ok');
+  } catch (e) {
+    statusEl.innerHTML = '<div style="color:var(--red);font-size:13px;margin-top:6px;">❌ 上傳失敗：' + esc(e.message) + '</div>';
+    toast('照片上傳失敗：' + e.message, 'err');
+  }
+}
+
+function fileToB64(file) {
+  return new Promise(function (res, rej) {
+    var r = new FileReader();
+    r.onload  = function (e) { res(e.target.result); };
+    r.onerror = rej;
+    r.readAsDataURL(file);
   });
 }
 
-function openSheet(a) {
-  $$('sheet-title').textContent = a.name;
-  $$('sheet-body').innerHTML = `
-    <div style="line-height:2">
-      <div><b>財產編號:</b> ${a.sn}</div>
-      <div><b>存放地點:</b> ${a.loc}</div>
-      <div><b>目前狀態:</b> ${a.status}</div>
-      <div><b>盤點人員:</b> ${a.assignee || '尚未指派'}</div>
-      <div style="margin-top:10px;color:var(--text2);font-size:12px">備註: ${a.note || '無'}</div>
-    </div>
-  `;
-  $$('sheet-overlay').classList.remove('hidden');
+/* ── Save ─────────────────────────────────────────────── */
+async function saveDetail() {
+  var a = S.editAsset;
+  if (!a) { closeSheet(); return; }
+
+  var newStatus  = (a._pendingStatus || a.status || '待盤點').trim();
+  var newNote    = ($('ed-note')     ? $('ed-note').value : a.note) || '';
+  var newAssign  = ($('ed-assignee') ? $('ed-assignee').value : a.assignee) || S.user;
+  var newPhoto   = S.pendingPhoto || a.photo || '';
+
+  // Optimistic local update
+  a.status   = newStatus;
+  a.note     = newNote;
+  a.assignee = newAssign;
+  a.photo    = newPhoto;
+  delete a._pendingStatus;
+
+  try {
+    setSyncStatus('syncing', '⟳');
+    await apiPost({
+      action  : 'update',
+      rowIndex: a.rowIndex,
+      status  : newStatus,
+      note    : newNote,
+      assignee: newAssign,
+      photo   : newPhoto,
+    });
+    setSyncStatus('idle', '● 已同步');
+    toast('✅ 儲存成功', 'ok');
+    closeSheet();
+    applyFilter();
+    updateProgress();
+  } catch (e) {
+    setSyncStatus('error', '⚠');
+    toast('儲存失敗：' + e.message, 'err');
+  }
 }
 
 function closeSheet() {
-  $$('sheet-overlay').classList.add('hidden');
+  $('sheet-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+  S.editAsset    = null;
+  S.pendingPhoto = null;
+}
+function closeSheetOnBg(e) {
+  if (e.target === $('sheet-overlay')) { closeSheet(); }
 }
 
-function toast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = msg;
-  $$('toast-stack').appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════════════ */
+function updateDashboard() {
+  var a   = S.assets;
+  var tot = a.length;
+  var ok  = a.filter(function (x) { return (x.status || '').trim() === '已盤點'; }).length;
+  var pd  = a.filter(function (x) { return (x.status || '').trim() === '待盤點'; }).length;
+  var ls  = a.filter(function (x) { return (x.status || '').trim() === '資產遺失'; }).length;
+  var dm  = a.filter(function (x) { return (x.status || '').trim() === '設備損壞'; }).length;
+
+  $('stats-grid').innerHTML =
+    '<div class="stat-card"><div class="stat-n" style="color:var(--pri)">'   + tot + '</div><div class="stat-l">資產總數</div></div>' +
+    '<div class="stat-card"><div class="stat-n" style="color:var(--green)">' + ok  + '</div><div class="stat-l">已盤點</div></div>' +
+    '<div class="stat-card"><div class="stat-n" style="color:var(--yellow)">'+ pd  + '</div><div class="stat-l">待盤點</div></div>' +
+    '<div class="stat-card"><div class="stat-n" style="color:var(--red)">'   + (ls + dm) + '</div><div class="stat-l">異常</div></div>';
+
+  // Per-member progress
+  var memberStats = {};
+  CONFIG.MEMBERS.forEach(function (m) { memberStats[m] = { total: 0, done: 0 }; });
+  a.forEach(function (x) {
+    var m = (x.assignee || '').trim();
+    if (m && memberStats[m]) {
+      memberStats[m].total++;
+      if ((x.status || '').trim() === '已盤點') { memberStats[m].done++; }
+    }
+  });
+
+  $('member-progress').innerHTML = CONFIG.MEMBERS.map(function (m) {
+    var st  = memberStats[m];
+    var pct = st.total > 0 ? Math.round(st.done / st.total * 100) : 0;
+    var isMe = m === S.user;
+    return (
+      '<div class="dash-row" style="' + (isMe ? 'background:var(--pri-l);' : '') + '">' +
+        '<div>' +
+          '<div class="dash-row-label">' + esc(m) + (isMe ? ' <span style="color:var(--pri);font-size:12px;">（我）</span>' : '') + '</div>' +
+          '<div class="dash-row-sub">' + st.done + ' / ' + st.total + ' 筆 · ' + pct + '%</div>' +
+        '</div>' +
+        '<div class="member-prog-bar">' +
+          '<div class="member-prog-fill" style="width:' + pct + '%"></div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   EXCEL IMPORT
+══════════════════════════════════════════════════════════ */
+var XL_MAP = [
+  { e:'序號',    f:'seq' }, { e:'財產編號', f:'sn'    }, { e:'財產名稱', f:'name'   },
+  { e:'廠牌形式',f:'brand'}, { e:'取得日期', f:'date'  }, { e:'數量',    f:'qty'    },
+  { e:'單位',    f:'unit' }, { e:'存置地點', f:'loc'   }, { e:'盤點人員', f:'assignee'},
+  { e:'財產照片',f:'photo'}, { e:'狀態',    f:'status'}, { e:'地點備註', f:'note'   },
+];
+
+function importExcel(inp) {
+  var file = inp.files[0];
+  if (!file) { return; }
+  var reader = new FileReader();
+  reader.onload = function (ev) {
+    try {
+      var wb   = XLSX.read(ev.target.result, { type:'array', cellDates:true, raw:false });
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'', raw:false });
+      if (!rows.length) { toast('檔案無資料', 'err'); inp.value = ''; return; }
+
+      var hk = Object.keys(rows[0]);
+      var km = {};
+      XL_MAP.forEach(function (item) {
+        var k = hk.find(function (h) { return h.trim() === item.e || h.includes(item.e); });
+        if (k) { km[k] = item.f; }
+      });
+
+      var parsed = rows.map(function (row) {
+        var obj = { seq:'',sn:'',name:'',brand:'',date:'',qty:'1',unit:'',loc:'',assignee:'',photo:'',status:'待盤點',note:'' };
+        Object.keys(km).forEach(function (k) {
+          var v = row[k];
+          if (v instanceof Date) { v = v.toLocaleDateString('zh-TW'); }
+          obj[km[k]] = String(v || '').trim();
+        });
+        return obj;
+      }).filter(function (o) { return o.name || o.sn; });
+
+      S.pendingImport = parsed;
+      $('import-result').innerHTML =
+        '<div class="ir-ok">✔ 成功解析 ' + parsed.length + ' 筆資料</div>' +
+        '<div style="margin-top:6px;color:var(--text2);font-size:12px;line-height:1.7;">' +
+          '按「推送至試算表」將資料批次寫入 Google Sheets。<br>' +
+          '⚠️ 此操作會在現有資料後方<strong>追加</strong>，不會覆蓋已有資料。</div>';
+      $('import-push-btn').classList.remove('hidden');
+      $('import-modal').classList.remove('hidden');
+    } catch (e) {
+      toast('解析失敗：' + e.message, 'err');
+      console.error(e);
+    }
+    inp.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function pushImport() {
+  var rows = S.pendingImport;
+  if (!rows || !rows.length) { return; }
+  var btn = $('import-push-btn');
+  btn.disabled = true; btn.textContent = '⟳ 推送中…';
+  try {
+    var matrix = rows.map(function (a) {
+      return [a.seq,a.sn,a.name,a.brand,a.date,a.qty,a.unit,a.loc,a.assignee,a.photo,a.status,a.note];
+    });
+    await apiPost({ action: 'batchAppend', rows: matrix });
+    toast('✅ 已推送 ' + rows.length + ' 筆', 'ok');
+    $('import-modal').classList.add('hidden');
+    S.pendingImport = null;
+    await loadData(true);
+  } catch (e) {
+    toast('推送失敗：' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '⬆ 推送至試算表';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   EXCEL EXPORT
+══════════════════════════════════════════════════════════ */
+function exportExcel() {
+  if (!S.assets.length) { toast('無資料可匯出', 'warn'); return; }
+  var rows = S.assets.map(function (a) {
+    return {
+      '序號':a.seq||'', '財產編號':a.sn||'', '財產名稱':a.name||'', '廠牌形式':a.brand||'',
+      '取得日期':a.date||'', '數量':a.qty||'', '單位':a.unit||'', '存置地點':a.loc||'',
+      '盤點人員':a.assignee||'', '財產照片':a.photo||'', '狀態':a.status||'', '地點備註':a.note||'',
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:6},{wch:16},{wch:24},{wch:20},{wch:12},
+    {wch:5},{wch:5},{wch:18},{wch:8},{wch:45},{wch:8},{wch:24}
+  ];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '資產盤點表');
+  var d   = new Date();
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  XLSX.writeFile(wb, '資產盤點_' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '.xlsx');
+  toast('📤 Excel 匯出完成', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════
+   PAGE NAVIGATION
+══════════════════════════════════════════════════════════ */
+function switchPage(id, el) {
+  document.querySelectorAll('.page').forEach(function (p) {
+    p.classList.remove('active'); p.classList.add('hidden');
+  });
+  document.querySelectorAll('.nav-btn').forEach(function (n) { n.classList.remove('active'); });
+
+  var pg = $('page-' + id);
+  pg.classList.remove('hidden');
+  pg.classList.add('active');
+  el.classList.add('active');
+
+  if (id === 'dash')     { updateDashboard(); }
+  if (id === 'settings') { $('settings-user').textContent = S.user; $('settings-url').textContent = S.apiUrl || '（未設定）'; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════════════════ */
+function editApiUrl() {
+  var url = prompt('請貼入 Apps Script 部署網址：', S.apiUrl);
+  if (url && url.startsWith('https://')) {
+    S.apiUrl = url.trim();
+    localStorage.setItem('inv_url', S.apiUrl);
+    $('settings-url').textContent = S.apiUrl;
+    toast('✅ 網址已更新', 'ok');
+    loadData(true);
+  }
+}
+
+async function pingServer() {
+  $('ping-result').textContent = '測試中…';
+  try {
+    var d = await apiGet('ping');
+    $('ping-result').textContent = '✅ 連線成功 ' + (d.time || '');
+  } catch (e) {
+    $('ping-result').textContent = '❌ 失敗：' + e.message;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SYNC INDICATOR
+══════════════════════════════════════════════════════════ */
+function setSyncStatus(state, label) {
+  var el = $('sync-badge');
+  el.className = 'sync-badge ' + state;
+  el.textContent = label;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════ */
+function toast(msg, type) {
+  var stack = $('toast-stack');
+  var t     = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  var icons = { ok:'✅', err:'❌', warn:'⚠️' };
+  t.innerHTML = '<span>' + (icons[type] || 'ℹ️') + '</span><span>' + esc(msg) + '</span>';
+  stack.appendChild(t);
+  setTimeout(function () { t.remove(); }, 3500);
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 </script>
 </body>
