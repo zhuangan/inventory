@@ -545,7 +545,8 @@ const CONFIG = {
   SPREADSHEET_ID:  '13npGJUXKkpTo4iYWL9K8LBjLTj1cHdqJiXNeX0LoVi8',
   SHEET_NAME:      '資產清單',
   DRIVE_FOLDER:    'Inventory_Photos',
-  SCOPES:          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
+  // 修正下面這一行，確保權限純淨：
+  SCOPES:          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
   MEMBERS:         ['淳安','怡伶','淳瑜','曾晴','松霖','苡彣','珉瑄','佩玟','禹融','奕暄','雅欣'],
 };
 
@@ -628,20 +629,16 @@ function handleGoogleLogin(){
 
 function onTokenReceived(resp){
   if(resp.error){ toast('登入失敗：'+resp.error,'error'); return; }
+  
   state.accessToken = resp.access_token;
   gapi.client.setToken({ access_token: resp.access_token });
   localStorage.setItem('gs_token', resp.access_token);
-  // Show name selector
-  show('name-select-wrap');
-}
 
-function confirmName(){
-  const sel = document.getElementById('user-name-select').value;
-  if(!sel){ toast('請選擇您的名字','warning'); return; }
-  state.currentUser = sel;
-  localStorage.setItem('gs_user', sel);
-  hide('login-screen');
-  launchApp();
+  // 【核心修正】這幾行負責把登入按鈕變不見，把名字選單變出來
+  document.getElementById('google-login-btn').classList.add('hidden'); // 隱藏登入按鈕
+  document.getElementById('name-select-wrap').classList.remove('hidden'); // 顯示選擇名字
+  
+  toast('登入成功，請選擇您的名字', 'success');
 }
 
 async function launchApp(){
