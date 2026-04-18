@@ -327,6 +327,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .sheet{max-width:520px;border-radius:24px;margin-bottom:20px;}
   .sheet-overlay{align-items:center;}
 }
+#asset-list {
+  min-height: 500px !important;
+  background: rgba(0,0,0,0.05); /* 給它一個淡灰色背景，看它在哪裡 */
+}
 </style>
 </head>
 <body>
@@ -692,18 +696,22 @@ function setChip(status, el) {
 }
 
 function applyFilter() {
-  const q      = ($$('search-inp')?.value || '').toLowerCase().trim();
+  // 1. 取得搜尋字串與開關狀態
+  const q = ($$('search-inp')?.value || '').toLowerCase().trim();
   const myOnly = $$('my-toggle')?.checked;
   S.myOnly = myOnly;
 
-  S.filtered = S.assets.filter(a => {
-    if (S.filterSt !== 'all' && a.status !== S.filterSt) return false;
-    if (myOnly && a.assignee !== S.user) return false;
-    if (q && !a.name.toLowerCase().includes(q)
-          && !(a.sn || '').toLowerCase().includes(q)
-          && !(a.loc || '').toLowerCase().includes(q)) return false;
-    return true;
-  });
+  // 2. 【除錯核心】強制不進行過濾
+  // 先讓 filtered 等於所有原始資料，確保畫面能畫出東西
+  S.filtered = S.assets; 
+
+  // 3. 在主控台輸出資料，讓我們知道程式到底拿到了什麼
+  console.log("目前資料庫(S.assets)總筆數:", S.assets.length);
+  console.log("第一筆資料內容:", S.assets[0]);
+
+  renderList();
+  updateProgress();
+});
 
   renderList();
   updateProgress();
@@ -739,6 +747,7 @@ const CARD_BORDER = {
 
 function renderList() {
   const list = $$('asset-list');
+  console.log("目前準備畫出的資料筆數：", S.filtered.length); // 加入這一行
   list.innerHTML = '';
 
   if (!S.filtered.length) {
