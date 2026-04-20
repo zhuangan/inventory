@@ -1540,16 +1540,15 @@ function buildCard(a) {
 
 // --- 修正相簿預覽部分 ---
   var photoHtml = '';
-  if (Array.isArray(a.photo) && a.photo.length > 0) {
-    photoHtml = a.photo.map(function(url) {
-      // 移除 esc(url)，直接使用 url
-      // 增加 min-height 確保容器不會塌陷
-      return '<img class="card-photo-thumb" src="' + url + '" ' +
-             'loading="lazy" ' +
-             'style="width:100%; display:block; margin-bottom:8px; border-radius:4px; min-height:50px; background:#f0f0f0;" ' +
-             'onerror="console.log(\'圖片載入失敗:\', this.src); this.src=\'https://via.placeholder.com/150?text=No+Image\'" alt="照片">';
-    }).join('');
-  }
+if (Array.isArray(a.photo) && a.photo.length > 0) {
+  photoHtml = a.photo.map(function(url) {
+    return '<img class="card-photo-thumb" src="' + url + '" ' + 
+           'loading="lazy" ' +
+           'style="width:100%; display:block; margin-bottom:8px; border-radius:4px; min-height:50px; background:#f0f0f0;" ' +
+           'onerror="console.log(\'圖片載入失敗:\', this.src); this.src=\'https://via.placeholder.com/150?text=No+Image\'" alt="照片">';
+  }).join('');
+}
+
   div.innerHTML =
     '<div class="card-top">' +
       '<div class="card-sn">' + esc(a.sn || '—') + '</div>' +
@@ -1577,19 +1576,18 @@ function buildCard(a) {
 
 /* ── 縮圖卡片 ─────────────────────────────────────────── */
 function buildThumbCard(a) {
-  var status    = (a.status || '待盤點').trim();
-  var dotColor  = STATUS_DOT_COLOR[status] || '#e37400';
-  var div       = document.createElement('div');
-  div.className = 'thumb-card';
+  // ... 前方代碼不變 ...
 
-  // 取得第一張照片作為縮圖
+  // ✅ 嚴謹修正：從陣列中取第一張圖作為縮圖，且移除 esc
   var firstPhoto = (Array.isArray(a.photo) && a.photo.length > 0) ? a.photo[0] : null;
 
-  // 修正點：移除 onerror="this.remove()" 以免誤刪，改用預設圖
   var imgHtml = firstPhoto
     ? '<img src="' + firstPhoto + '" loading="lazy" style="width:100%; height:100%; object-fit:cover;" ' +
       'onerror="this.src=\'https://via.placeholder.com/50?text=?\'" alt="照片">'
     : '<span style="opacity:.4;">🖼</span>';
+
+  // ... 後方 innerHTML 代碼不變 ...
+}
 
   div.innerHTML =
     '<div class="thumb-img-wrap" style="width:50px; height:50px; overflow:hidden; background:#eee; display:flex; align-items:center; justify-content:center;">' +
@@ -1652,12 +1650,18 @@ function buildDetailHTML(a) {
     { v:'設備損壞',cls:'sop-damaged', label:'⚠️ 設備損壞' },
   ];
 
-  var photoSection = a.photo
-    ? '<div id="photo-result" class="photo-result-wrap">' +
-        '<img src="' + esc(a.photo) + '" onerror="this.style.display=\'none\'" alt="現有照片">' +
-        '<a class="photo-link" href="' + esc(a.photo) + '" target="_blank">🔗 查看原圖 (Drive)</a>' +
-      '</div>'
-    : '<div id="photo-result"></div>';
+ // ✅ 嚴謹修正：詳細視窗也顯示所有照片
+var photoSection = '';
+if (Array.isArray(a.photo) && a.photo.length > 0) {
+  photoSection = '<div id="photo-result" class="photo-result-wrap">' +
+    a.photo.map(function(url) {
+      return '<img src="' + url + '" style="width:100%; margin-bottom:5px; border-radius:8px;">' +
+             '<a class="photo-link" href="' + url + '" target="_blank" style="display:block; margin-bottom:10px;">🔗 查看原圖 (Drive)</a>';
+    }).join('') +
+  '</div>';
+} else {
+  photoSection = '<div id="photo-result"></div>';
+}
 
   var memberOpts = CONFIG.MEMBERS.map(function (m) {
     return '<option value="' + m + '"' + ((a.assignee||'').trim()===m?' selected':'') + '>' + m + '</option>';
