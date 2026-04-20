@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a73e8">
+<title>資產盤點系統 Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════════ */
+:root {
+  --pri:    #1a73e8;
+  --pri-d:  #1557b0;
+  --pri-l:  #e8f0fe;
+  --green:  #0f9d58;
+  --green-l:#e6f4ea;
+  --red:    #d93025;
+  --red-l:  #fce8e6;
+  --yellow: #e37400;
+  --yellow-l:#fef7e0;
+  --orange: #e8710a;
+  --orange-l:#fce8d5;
+  --bg:     #f0f4ff;
+  --surface:#ffffff;
+  --border: #dadce0;
+  --border2:#e8eaed;
+  --text:   #202124;
+  --text2:  #5f6368;
+  --text3:  #9aa0a6;
+  --shadow: 0 1px 4px rgba(60,64,67,.18), 0 2px 8px rgba(60,64,67,.10);
+  --shadow-lg: 0 4px 20px rgba(60,64,67,.22);
+  --r:    14px;
+  --r-sm: 10px;
+  --r-lg: 20px;
+  --mono: 'JetBrains Mono', monospace;
+  --body: 'Noto Sans TC', sans-serif;
+  --bar-h: 56px;
+  --nav-h: 64px;
+}
+
+/* ── RESET ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--body); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+/* ── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── ANIMATIONS ────────────────────────────────────────── */
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes slideUp  { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes spin     { to   { transform: rotate(360deg); } }
+@keyframes shimmer  { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* ── UTILITIES ─────────────────────────────────────────── */
+.hidden { display: none !important; }
+.w-full { width: 100%; }
+.flex   { display: flex; align-items: center; }
+.spinner {
+  width: 24px; height: 24px;
+  border: 2.5px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+  flex-shrink: 0;
+}
+.spinner-dark {
+  border-color: var(--border);
+  border-top-color: var(--pri);
+}
+.spinner-sm { width: 16px; height: 16px; border-width: 2px; }
+
+/* ── INPUTS ────────────────────────────────────────────── */
+input, select, textarea {
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 13px 15px;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--pri);
+  box-shadow: 0 0 0 3px rgba(26,115,232,.16);
+}
+textarea { resize: none; min-height: 80px; line-height: 1.6; }
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235f6368' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+/* ── BUTTONS ───────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border-radius: var(--r-sm);
+  font-family: var(--body);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .55; cursor: not-allowed; pointer-events: none; }
+.btn-primary   { background: var(--pri);   color: #fff; }
+.btn-primary:hover { background: var(--pri-d); }
+.btn-green     { background: var(--green); color: #fff; }
+.btn-green:hover   { background: #0b8043; }
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1.5px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--pri); color: var(--pri); }
+.btn-icon {
+  min-height: 44px; min-width: 44px;
+  padding: 0; border-radius: 50%;
+  background: transparent; border: none;
+  color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; transition: background .15s;
+}
+.btn-icon:hover { background: var(--border2); }
+.btn-sm { min-height: 38px; padding: 8px 16px; font-size: 13px; }
+.btn-xs { min-height: 32px; padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+
+/* ══════════════════════════════════════════════════════════
+   SPLASH
+══════════════════════════════════════════════════════════ */
+#splash {
+  position: fixed; inset: 0; z-index: 9999;
+  background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; color: #fff;
+}
+#splash .splash-icon { font-size: 64px; }
+#splash h1 { font-size: 24px; font-weight: 900; letter-spacing: -.02em; }
+#splash p  { font-size: 14px; opacity: .75; }
+
+/* ══════════════════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════════════════ */
+#login-screen {
+  position: fixed; inset: 0; z-index: 200;
+  background: linear-gradient(160deg, #e8f0fe 0%, #f8faff 60%, #e6f4ea 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.login-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 40px 36px;
+  width: 100%; max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  animation: fadeUp .4s ease;
+}
+.login-card .lc-icon { font-size: 56px; margin-bottom: 10px; }
+.login-card h1 { font-size: 22px; font-weight: 900; margin-bottom: 4px; letter-spacing: -.02em; }
+.login-card .lc-sub { font-size: 13px; color: var(--text2); margin-bottom: 28px; line-height: 1.6; }
+.login-card label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; text-align: left; }
+
+/* ══════════════════════════════════════════════════════════
+   APP SHELL
+══════════════════════════════════════════════════════════ */
+#app {
+  display: none;
+  position: fixed; inset: 0;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+/* ── TOP BAR ───────────────────────────────────────────── */
+.topbar {
+  height: var(--bar-h);
+  background: #fff;
+  border-bottom: 1px solid var(--border2);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  flex-shrink: 0;
+  z-index: 100;
+}
+.topbar-logo { font-size: 18px; font-weight: 900; color: var(--pri); letter-spacing: -.02em; }
+.topbar-logo span { color: var(--text2); font-weight: 400; font-size: 15px; }
+.topbar-sep { flex: 1; }
+.sync-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1.5px solid;
+  white-space: nowrap;
+}
+.sync-badge.idle    { color: var(--green);  border-color: rgba(15,157,88,.3);  background: var(--green-l); }
+.sync-badge.syncing { color: var(--yellow); border-color: rgba(227,116,0,.3);  background: var(--yellow-l); animation: spin 1.2s linear infinite; }
+.sync-badge.error   { color: var(--red);    border-color: rgba(217,48,37,.3);  background: var(--red-l); }
+.user-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--pri-l); border-radius: 99px;
+  padding: 5px 13px 5px 6px; cursor: pointer;
+}
+.user-pill:hover { background: #d2e3fc; }
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--pri); color: #fff;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.user-name { font-size: 13px; font-weight: 700; color: var(--pri); }
+
+/* ── SCROLLABLE AREA ───────────────────────────────────── */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0) + 8px) !important;
+}
+
+/* ── PAGES ─────────────────────────────────────────────── */
+.page { display: none; padding-bottom: 16px; }
+.page.active { display: block; animation: fadeUp .22s ease; }
+
+/* ══════════════════════════════════════════════════════════
+   FILTER STRIP
+══════════════════════════════════════════════════════════ */
+.filter-strip {
+  background: #fff;
+  border-bottom: 1px solid var(--border2);
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  position: sticky; top: 0; z-index: 90;
+}
+.search-box { position: relative; }
+.search-box input {
+  padding-left: 44px;
+  font-size: 14px;
+  background: #f1f3f4;
+  border-color: #f1f3f4;
+  border-radius: 99px;
+}
+.search-box input:focus { background: #fff; border-color: var(--pri); }
+.search-icon {
+  position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px; color: var(--text3);
+  pointer-events: none;
+}
+.chip-row {
+  display: flex; gap: 8px;
+  overflow-x: auto; padding-bottom: 2px;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 16px; border-radius: 99px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  border: 1.5px solid var(--border);
+  background: #fff; color: var(--text2);
+  transition: all .15s; min-height: 38px;
+}
+.chip:hover { border-color: var(--pri); color: var(--pri); }
+.chip.active { background: var(--pri-l); border-color: var(--pri); color: var(--pri); }
+
+/* ── 地點篩選 chip 行 ────────────────────────────────── */
+.loc-chip-row {
+  display: flex; gap: 6px;
+  overflow-x: auto; padding-bottom: 2px;
+}
+.loc-chip-row::-webkit-scrollbar { display: none; }
+.loc-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 13px; border-radius: 99px;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  border: 1.5px solid transparent;
+  transition: all .15s; min-height: 32px;
+  position: relative;
+}
+.loc-chip.active {
+  box-shadow: 0 0 0 3px var(--loc-color-alpha, rgba(26,115,232,.25));
+}
+
+.my-tasks-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.my-tasks-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+
+/* ── 隱藏已盤點 row ─────────────────────────────────── */
+.hide-done-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.hide-done-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+
+/* toggle switch */
+.toggle-wrap { position: relative; width: 46px; height: 26px; cursor: pointer; }
+.toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: var(--border); border-radius: 99px; transition: .2s;
+}
+.toggle-thumb {
+  position: absolute; width: 20px; height: 20px;
+  background: #fff; border-radius: 50%;
+  left: 3px; top: 3px; transition: .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.toggle-wrap input:checked ~ .toggle-track { background: var(--pri); }
+.toggle-wrap input:checked ~ .toggle-thumb { transform: translateX(20px); }
+
+/* ── 縮圖/列表切換 ────────────────────────────────────── */
+.view-toggle-btn {
+  background: transparent; border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 16px; cursor: pointer; color: var(--text2);
+  transition: all .15s; line-height: 1;
+}
+.view-toggle-btn.active {
+  background: var(--pri-l); border-color: var(--pri); color: var(--pri);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROGRESS BAR (清單頁頂部)
+══════════════════════════════════════════════════════════ */
+.prog-block {
+  padding: 10px 16px 8px;
+  background: #fff;
+  border-bottom: 1px solid var(--border2);
+}
+.prog-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; font-weight: 600; color: var(--text2);
+  margin-bottom: 6px;
+}
+.prog-meta span:last-child { color: var(--pri); }
+.prog-track {
+  height: 7px; background: #e8eaed;
+  border-radius: 99px; overflow: hidden;
+}
+.prog-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--pri), var(--green));
+  transition: width .6s cubic-bezier(.4, 0, .2, 1);
+}
+/* 進度條詳情小標籤 */
+.prog-detail {
+  display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap;
+}
+.prog-detail-item {
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 99px;
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ASSET CARDS — 列表模式
+══════════════════════════════════════════════════════════ */
+.asset-list {
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.asset-card {
+  background: #fff;
+  border-radius: var(--r);
+  border: 1.5px solid var(--border2);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  cursor: pointer;
+}
+.asset-card:hover {
+  border-color: var(--pri);
+  box-shadow: 0 4px 16px rgba(26,115,232,.14);
+}
+.asset-card:active { transform: scale(.99); }
+.card-s-checked { border-left: 4px solid var(--green); }
+.card-s-pending  { border-left: 4px solid var(--yellow); }
+.card-s-missing  { border-left: 4px solid var(--red); }
+.card-s-damaged  { border-left: 4px solid var(--orange); }
+
+.card-top {
+  padding: 13px 15px 0;
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 8px;
+}
+.card-sn {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--text3); background: #f1f3f4;
+  padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+}
+.status-badge {
+  font-size: 11px; font-weight: 800;
+  padding: 4px 11px; border-radius: 99px; white-space: nowrap;
+}
+.sb-checked { background: var(--green-l);  color: var(--green); }
+.sb-pending { background: var(--yellow-l); color: var(--yellow); }
+.sb-missing { background: var(--red-l);    color: var(--red); }
+.sb-damaged { background: var(--orange-l); color: var(--orange); }
+
+.card-body { padding: 10px 15px 13px; }
+.card-name { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 7px; line-height: 1.3; }
+.card-rows { display: flex; flex-direction: column; gap: 4px; }
+.card-row  { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 7px; }
+.card-row-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.card-loc  { font-weight: 700; color: var(--pri); }
+.assignee-chip {
+  background: var(--pri-l); color: var(--pri);
+  font-size: 12px; font-weight: 700;
+  padding: 2px 9px; border-radius: 99px;
+}
+.card-photo-thumb {
+  width: 100%; max-height: 180px; object-fit: cover;
+  display: block; border-top: 1px solid var(--border2);
+}
+.card-footer {
+  padding: 10px 15px;
+  border-top: 1px solid var(--border2);
+  background: #fafafa;
+  display: flex; gap: 8px; align-items: center;
+}
+
+/* ── 地點顏色標記 dot ──────────────────────────────────── */
+.loc-color-dot {
+  display: inline-block;
+  width: 9px; height: 9px; border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--loc-glow, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ASSET GRID — 縮圖模式
+══════════════════════════════════════════════════════════ */
+.asset-grid {
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 480px) { .asset-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 720px) { .asset-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.thumb-card {
+  background: #fff;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--border2);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  position: relative;
+}
+.thumb-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+.thumb-card:active { transform: scale(.98); }
+.thumb-img-wrap {
+  width: 100%; aspect-ratio: 1 / 1;
+  background: #f1f3f4;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; overflow: hidden; position: relative;
+}
+.thumb-img-wrap img {
+  width: 100%; height: 100%; object-fit: cover;
+  position: absolute; inset: 0;
+}
+.thumb-status-dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 1.5px solid #fff;
+}
+.thumb-body { padding: 8px 10px 10px; }
+.thumb-name { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.thumb-loc  { font-size: 11px; color: var(--text3); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ══════════════════════════════════════════════════════════
+   BOTTOM NAVIGATION
+══════════════════════════════════════════════════════════ */
+.bottom-nav {
+  height: var(--nav-h);
+  background: #fff;
+  border-top: 1px solid var(--border2);
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 110;
+  box-shadow: 0 -1px 0 var(--border2), 0 -4px 12px rgba(60,64,67,.06);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px; cursor: pointer;
+  color: var(--text3); font-size: 11px; font-weight: 600;
+  background: transparent; border: none;
+  padding: 8px 4px; transition: color .15s;
+}
+.nav-btn.active { color: var(--pri); }
+.nav-btn .ni { font-size: 23px; line-height: 1; }
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD STATS
+══════════════════════════════════════════════════════════ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px; padding: 16px;
+}
+@media (min-width: 600px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+.stat-card {
+  background: #fff; border-radius: var(--r);
+  padding: 18px 16px; border: 1.5px solid var(--border2);
+  text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.stat-n { font-size: 30px; font-weight: 900; font-family: var(--mono); margin-bottom: 5px; }
+.stat-l { font-size: 12px; font-weight: 600; color: var(--text2); }
+
+.dash-section {
+  margin: 0 16px 14px;
+  background: #fff; border-radius: var(--r);
+  border: 1.5px solid var(--border2); overflow: hidden;
+}
+.dash-section-hd {
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 14px 16px 0;
+}
+.dash-row {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.dash-row:last-child { border-bottom: none; }
+.dash-row-label { font-size: 14px; font-weight: 700; }
+.dash-row-sub   { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+.member-prog-bar {
+  width: 72px; height: 6px; background: #e8eaed;
+  border-radius: 99px; overflow: hidden; flex-shrink: 0;
+}
+.member-prog-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--pri), var(--green));
+  transition: width .4s;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════════════════ */
+.settings-block {
+  margin: 12px 16px;
+  background: #fff; border-radius: var(--r);
+  border: 1.5px solid var(--border2); overflow: hidden;
+}
+.settings-row {
+  padding: 15px 16px; border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: 14px; font-weight: 700; }
+.settings-row-sub   { font-size: 12px; color: var(--text2); margin-top: 2px; word-break: break-all; }
+
+/* ══════════════════════════════════════════════════════════
+   BOTTOM SHEET (Detail / Edit)
+══════════════════════════════════════════════════════════ */
+.sheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 300;
+  display: flex; align-items: flex-end;
+}
+.sheet {
+  background: #fff;
+  border-radius: 26px 26px 0 0;
+  width: 100%;
+  max-height: 92dvh;
+  display: flex; flex-direction: column;
+  animation: slideUp .3s cubic-bezier(.4, 0, .2, 1);
+}
+.sheet-handle {
+  width: 40px; height: 4px;
+  background: var(--border); border-radius: 2px;
+  margin: 14px auto 0; flex-shrink: 0;
+}
+.sheet-hd {
+  padding: 14px 18px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border2); flex-shrink: 0;
+}
+.sheet-title { font-size: 17px; font-weight: 900; color: var(--text); }
+.sheet-body {
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 20px 18px;
+  display: flex; flex-direction: column; gap: 18px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 24px);
+}
+.fl { display: block; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 7px; }
+.fv { font-size: 15px; color: var(--text); padding: 11px 0; border-bottom: 1px solid var(--border2); }
+.fv.hi { color: var(--pri); font-weight: 700; font-family: var(--mono); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 360px) { .grid2 { grid-template-columns: 1fr; } }
+
+.status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.status-opt {
+  padding: 13px 10px; border-radius: var(--r-sm);
+  border: 2px solid var(--border2); text-align: center;
+  cursor: pointer; font-size: 14px; font-weight: 700;
+  transition: all .15s; line-height: 1.3;
+}
+.status-opt:hover { border-color: var(--pri); }
+.sop-checked { background: var(--green-l);  color: var(--green);  border-color: var(--green); }
+.sop-pending { background: var(--yellow-l); color: var(--yellow); border-color: var(--yellow); }
+.sop-missing { background: var(--red-l);    color: var(--red);    border-color: var(--red); }
+.sop-damaged { background: var(--orange-l); color: var(--orange); border-color: var(--orange); }
+
+.photo-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--r-sm); padding: 24px 16px;
+  text-align: center; cursor: pointer;
+  position: relative; transition: all .2s;
+}
+.photo-drop:hover, .photo-drop.over {
+  border-color: var(--pri); background: var(--pri-l);
+}
+.photo-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo-drop-icon { font-size: 30px; margin-bottom: 8px; }
+.photo-drop-text { font-size: 14px; color: var(--text2); font-weight: 500; }
+.photo-drop-sub  { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.upload-status-bar {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text2);
+  padding: 10px; background: var(--yellow-l);
+  border-radius: var(--r-sm);
+}
+.photo-result-wrap { display: flex; flex-direction: column; gap: 8px; }
+.photo-result-wrap img {
+  width: 100%; border-radius: var(--r-sm);
+  max-height: 200px; object-fit: cover;
+  border: 1px solid var(--border2);
+}
+.photo-link { font-size: 12px; color: var(--pri); word-break: break-all; text-decoration: underline; }
+
+/* ══════════════════════════════════════════════════════════
+   IMPORT MODAL
+══════════════════════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: #fff; border-radius: var(--r-lg);
+  width: 100%; max-width: 460px;
+  max-height: 82dvh; overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+.modal-hd {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.modal-title { font-size: 17px; font-weight: 800; }
+.modal-x {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: var(--border2);
+  color: var(--text2); cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-x:hover { background: var(--border); }
+.modal-body { padding: 20px 22px; }
+.import-result {
+  background: #f8faff; border-radius: var(--r-sm);
+  padding: 14px; font-family: var(--mono);
+  font-size: 13px; line-height: 2.2;
+}
+.ir-ok  { color: var(--green); }
+.ir-upd { color: var(--pri); }
+.ir-sk  { color: var(--yellow); }
+.ir-err { color: var(--red); }
+
+/* ══════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════ */
+.toast-stack {
+  position: fixed; top: 68px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: calc(100% - 32px); max-width: 400px;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: #323232; color: #fff;
+  border-radius: var(--r-sm); padding: 13px 16px;
+  font-size: 14px; font-weight: 500;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  animation: fadeUp .25s ease;
+  pointer-events: auto;
+}
+.toast.ok   { background: var(--green); }
+.toast.err  { background: var(--red); }
+.toast.warn { background: var(--yellow); }
+
+/* ── EMPTY STATE ───────────────────────────────────────── */
+.empty {
+  text-align: center; padding: 60px 24px;
+}
+.empty-icon  { font-size: 52px; margin-bottom: 12px; opacity: .45; }
+.empty-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.empty-sub   { font-size: 14px; color: var(--text2); line-height: 1.6; }
+
+/* ── RESPONSIVE ────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .asset-list, .filter-strip, .prog-block { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .asset-grid { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .sheet { max-width: 520px; border-radius: 24px; margin-bottom: 20px; }
+  .sheet-overlay { align-items: center; }
+  .bottom-nav {
+    left: 50%;
+    right: auto;
+    width: min(720px, 100%);
+    transform: translateX(-50%);
+    border-left:  1px solid var(--border2);
+    border-right: 1px solid var(--border2);
+    border-radius: 18px 18px 0 0;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD — enhanced visual sections
+══════════════════════════════════════════════════════════ */
+.dash-total-prog {
+  margin: 0 16px 14px;
+  background: #fff; border-radius: var(--r);
+  border: 1.5px solid var(--border2);
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.dash-total-prog-hd {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 12px;
+}
+.dash-total-prog-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+.dash-total-prog-pct   { font-size: 28px; font-weight: 900; font-family: var(--mono); color: var(--pri); }
+.seg-track {
+  height: 14px; border-radius: 99px; overflow: hidden;
+  display: flex; gap: 2px; background: var(--border2);
+}
+.seg-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.seg-legend { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+.seg-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text2); }
+.seg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.dash-pie-section {
+  margin: 0 16px 14px;
+  background: #fff; border-radius: var(--r);
+  border: 1.5px solid var(--border2);
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.dash-pie-section-hd {
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px;
+}
+.pie-wrap {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+#pie-canvas { border-radius: 50%; flex-shrink: 0; }
+.pie-legend { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 140px; }
+.pie-legend-item {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; font-size: 13px;
+}
+.pie-legend-left { display: flex; align-items: center; gap: 8px; }
+.pie-legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.pie-legend-label { font-weight: 600; color: var(--text); }
+.pie-legend-val { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text2); }
+
+.dash-member-section {
+  margin: 0 16px 14px;
+  background: #fff; border-radius: var(--r);
+  border: 1.5px solid var(--border2);
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.dash-member-section-hd {
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px;
+}
+.member-bars-wrap {
+  display: flex; gap: 10px; align-items: flex-end;
+  overflow-x: auto; padding-bottom: 4px;
+}
+.member-bars-wrap::-webkit-scrollbar { display: none; }
+.member-bar-col {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; flex-shrink: 0; width: 52px;
+}
+.member-bar-track {
+  width: 28px; height: 120px; background: var(--border2);
+  border-radius: 8px; overflow: hidden;
+  display: flex; align-items: flex-end;
+  position: relative;
+}
+.member-bar-fill {
+  width: 100%; border-radius: 8px;
+  background: linear-gradient(180deg, var(--pri) 0%, var(--green) 100%);
+  transition: height .6s cubic-bezier(.4,0,.2,1);
+  min-height: 4px;
+}
+.member-bar-fill.me {
+  background: linear-gradient(180deg, #e8710a 0%, var(--yellow) 100%);
+}
+.member-bar-pct {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--pri);
+}
+.member-bar-pct.me { color: var(--orange); }
+.member-bar-name {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  text-align: center; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; width: 52px;
+}
+.member-bar-name.me { color: var(--orange); font-weight: 900; }
+.member-bar-sub {
+  font-size: 10px; color: var(--text3); text-align: center;
+  font-family: var(--mono);
+}
+
+/* Upload progress ring */
+.upload-ring-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 16px;
+  background: var(--yellow-l); border-radius: var(--r-sm);
+}
+.upload-ring-svg { transform: rotate(-90deg); }
+.upload-ring-track { fill: none; stroke: rgba(0,0,0,.1); stroke-width: 5; }
+.upload-ring-fill {
+  fill: none; stroke: var(--yellow); stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 138.2;
+  stroke-dashoffset: 138.2;
+  transition: stroke-dashoffset .3s ease;
+}
+.upload-ring-label {
+  font-family: var(--mono); font-size: 13px;
+  font-weight: 700; color: var(--yellow);
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ SPLASH ════════════════════════════════════════════ -->
+<div id="splash">
+  <div class="splash-icon">📋</div>
+  <h1>資產盤點系統</h1>
+  <p>正在連線至雲端資料庫…</p>
+  <div class="spinner" style="margin-top:8px;"></div>
+</div>
+
+<!-- ═══ LOGIN ═════════════════════════════════════════════ -->
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <div class="lc-icon">📋</div>
+    <h1>資產盤點系統</h1>
+    <div class="lc-sub">11 位人員協作盤點平台<br>請選擇您的名字以繼續</div>
+    <label>您是？</label>
+    <select id="login-name">
+      <option value="">── 請選擇您的名字 ──</option>
+    </select>
+    <button class="btn btn-primary w-full" style="margin-top:16px;" onclick="doLogin()">
+      進入系統
+    </button>
+  </div>
+</div>
+
+<!-- ═══ APP ═══════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-logo">盤點<span> Pro</span></div>
+    <div class="topbar-sep"></div>
+    <div class="sync-badge idle" id="sync-badge">● 就緒</div>
+    <div class="user-pill" onclick="doLogout()" title="點擊登出">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div class="user-name"   id="user-name-label">—</div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content-area" id="content-area">
+
+    <!-- ── PAGE: 清單 ─────────────────────────────────── -->
+    <div class="page active" id="page-list">
+
+      <div class="filter-strip">
+        <!-- 搜尋框 + 視圖切換 -->
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="search-box" style="flex:1;">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="search-inp"
+              placeholder="搜尋名稱、財產編號、地點…"
+              oninput="scheduleFilter()">
+          </div>
+          <button class="view-toggle-btn active" id="view-btn-list" title="列表模式" onclick="setViewMode('list')">☰</button>
+          <button class="view-toggle-btn" id="view-btn-grid" title="縮圖模式" onclick="setViewMode('grid')">⊞</button>
+        </div>
+
+        <!-- 狀態篩選 chips -->
+        <div class="chip-row" id="chip-row">
+          <div class="chip active" data-f="all"     onclick="setChip('all',this)">全部</div>
+          <div class="chip"       data-f="待盤點"   onclick="setChip('待盤點',this)">🕐 待盤點</div>
+          <div class="chip"       data-f="已盤點"   onclick="setChip('已盤點',this)">✅ 已盤點</div>
+          <div class="chip"       data-f="資產遺失" onclick="setChip('資產遺失',this)">❌ 遺失</div>
+          <div class="chip"       data-f="設備損壞" onclick="setChip('設備損壞',this)">⚠️ 損壞</div>
+        </div>
+
+        <!-- 樓層/房間 動態地點篩選 chips -->
+        <div class="loc-chip-row" id="loc-chip-row"></div>
+
+        <!-- 我的任務 toggle -->
+        <div class="my-tasks-row">
+          <span class="my-tasks-label">只顯示我的任務</span>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="my-toggle" onchange="scheduleFilter()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+
+        <!-- 隱藏已盤點 toggle -->
+        <div class="hide-done-row">
+          <span class="hide-done-label">隱藏已盤點</span>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="hide-done-toggle" onchange="scheduleFilter()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- 進度詳情條 -->
+      <div class="prog-block" id="prog-block">
+        <div class="prog-meta">
+          <span id="prog-label">盤點進度</span>
+          <span id="prog-count">0 / 0</span>
+        </div>
+        <div class="prog-track">
+          <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+        </div>
+        <!-- 詳情小標籤 -->
+        <div class="prog-detail" id="prog-detail"></div>
+      </div>
+
+      <!-- 清單容器 (list/grid 均掛在此) -->
+      <div id="asset-container"></div>
+    </div>
+
+    <!-- ── PAGE: 統計 ─────────────────────────────────── -->
+    <div class="page hidden" id="page-dash">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="dash-total-prog" id="dash-total-prog">
+        <div class="dash-total-prog-hd">
+          <span class="dash-total-prog-title">整體盤點進度</span>
+          <span class="dash-total-prog-pct" id="dash-pct-label">0%</span>
+        </div>
+        <div class="seg-track" id="seg-track">
+          <div class="seg-fill" id="seg-ok"      style="background:var(--green);  width:0%"></div>
+          <div class="seg-fill" id="seg-pending" style="background:#ccc;          width:0%"></div>
+          <div class="seg-fill" id="seg-damaged" style="background:var(--orange); width:0%"></div>
+          <div class="seg-fill" id="seg-missing" style="background:var(--red);    width:0%"></div>
+        </div>
+        <div class="seg-legend">
+          <div class="seg-legend-item"><div class="seg-dot" style="background:var(--green)"></div>已盤點</div>
+          <div class="seg-legend-item"><div class="seg-dot" style="background:#ccc"></div>待盤點</div>
+          <div class="seg-legend-item"><div class="seg-dot" style="background:var(--orange)"></div>設備損壞</div>
+          <div class="seg-legend-item"><div class="seg-dot" style="background:var(--red)"></div>資產遺失</div>
+        </div>
+      </div>
+      <div class="dash-pie-section">
+        <div class="dash-pie-section-hd">狀態分布</div>
+        <div class="pie-wrap">
+          <canvas id="pie-canvas" width="140" height="140"></canvas>
+          <div class="pie-legend" id="pie-legend"></div>
+        </div>
+      </div>
+      <div class="dash-member-section">
+        <div class="dash-member-section-hd">各人員達成率（由高到低）</div>
+        <div class="member-bars-wrap" id="member-bars"></div>
+      </div>
+      <div class="dash-section">
+        <div class="dash-section-hd">資料管理</div>
+        <div class="dash-row">
+          <div>
+            <div class="dash-row-label">重新整理</div>
+            <div class="dash-row-sub">從 Google Sheets 重新載入</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadData(true)">🔄 刷新</button>
+        </div>
+        <div class="dash-row">
+          <div>
+            <div class="dash-row-label">匯出 Excel</div>
+            <div class="dash-row-sub">含所有欄位及照片連結</div>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="exportExcel()">📤 匯出</button>
+        </div>
+        <div class="dash-row">
+          <div>
+            <div class="dash-row-label">導入 Excel 總表</div>
+            <div class="dash-row-sub">批次寫入 Google Sheets</div>
+          </div>
+          <button class="btn btn-sm" style="background:var(--yellow);color:#fff;"
+            onclick="$el('xl-file').click()">📥 導入</button>
+        </div>
+        <input type="file" id="xl-file" accept=".xlsx,.xls,.csv" class="hidden"
+          onchange="importExcel(this)">
+      </div>
+    </div>
+
+    <!-- ── PAGE: 設定 ─────────────────────────────────── -->
+    <div class="page hidden" id="page-settings">
+      <div class="settings-block">
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">目前使用者</div>
+            <div class="settings-row-sub" id="settings-user">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="doLogout()">切換 / 登出</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Apps Script 網址</div>
+            <div class="settings-row-sub" id="settings-url" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="editApiUrl()">修改</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">連線測試</div>
+            <div class="settings-row-sub" id="ping-result">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="pingServer()">Ping</button>
+        </div>
+      </div>
+      <div style="padding:12px 16px;font-size:12px;color:var(--text3);line-height:1.8;">
+        版本 v4.5 · Google Apps Script 架構 · 免 OAuth 登入<br>
+        資料儲存於 Google Sheets，照片存放於 Google Drive
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-list" onclick="switchPage('list', this)">
+      <div class="ni">📋</div><div>清單</div>
+    </button>
+    <button class="nav-btn" id="nav-dash" onclick="switchPage('dash', this)">
+      <div class="ni">📊</div><div>統計</div>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="switchPage('settings', this)">
+      <div class="ni">⚙️</div><div>設定</div>
+    </button>
+  </nav>
+</div><!-- /app -->
+
+<!-- ═══ DETAIL / EDIT BOTTOM SHEET ════════════════════════ -->
+<div class="sheet-overlay hidden" id="sheet-overlay" onclick="closeSheetOnBg(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-title" id="sheet-title">資產詳情</div>
+      <button class="btn-icon" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </div>
+</div>
+
+<!-- ═══ IMPORT MODAL ══════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="import-modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title">📥 Excel 導入</div>
+      <button class="modal-x" onclick="$el('import-modal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-result" id="import-result"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm"
+          onclick="$el('import-modal').classList.add('hidden')">取消</button>
+        <button class="btn btn-primary btn-sm hidden" id="import-push-btn"
+          onclick="pushImport()">⬆ 推送至試算表</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ══════════════════════════════════════════════ -->
+<div class="toast-stack" id="toast-stack"></div>
+
+<!-- ═══ JAVASCRIPT ════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════════════ */
+const CONFIG = {
+  API_URL: 'https://script.google.com/macros/s/AKfycbyMB3O0cgwixfR-y_CIw2hmELf4loqp60ufliL6XOx456l7Fhj-Eo_w9tEA2shTJyQ/exec',
+  MEMBERS: ['淳安','怡伶','淳愉','曾晴','松霖','苡彣','珉瑄','佩玟','禹融','奕暄','雅欣'],
+};
+
+/* ══════════════════════════════════════════════════════════
+   地點顏色 — 8 色循環（背景 + 文字 + 光暈）
+══════════════════════════════════════════════════════════ */
+const LOC_COLORS = [
+  { bg:'#e8f0fe', text:'#1a73e8', dot:'#1a73e8', glow:'rgba(26,115,232,.25)'  },
+  { bg:'#e6f4ea', text:'#0f9d58', dot:'#0f9d58', glow:'rgba(15,157,88,.25)'   },
+  { bg:'#fce8d5', text:'#e8710a', dot:'#e8710a', glow:'rgba(232,113,10,.25)'  },
+  { bg:'#fce8e6', text:'#d93025', dot:'#d93025', glow:'rgba(217,48,37,.25)'   },
+  { bg:'#f3e8fd', text:'#9334ea', dot:'#9334ea', glow:'rgba(147,52,234,.25)'  },
+  { bg:'#fff8e1', text:'#f59e0b', dot:'#f59e0b', glow:'rgba(245,158,11,.25)'  },
+  { bg:'#e0f7fa', text:'#00838f', dot:'#00838f', glow:'rgba(0,131,143,.25)'   },
+  { bg:'#fce4ec', text:'#c2185b', dot:'#c2185b', glow:'rgba(194,24,91,.25)'   },
+];
+
+// 地點 → 顏色 index 的對映快取
+var _locColorMap = {};
+var _locColorIdx = 0;
+
+function getLocColor(loc) {
+  if (!loc) { return null; }
+  // 取 "樓層" 部分當作顏色分組依據（split('-')[0]）
+  var parts = loc.split('-');
+  var key   = parts[0].trim() || loc;
+  if (_locColorMap[key] === undefined) {
+    _locColorMap[key] = _locColorIdx % LOC_COLORS.length;
+    _locColorIdx++;
+  }
+  return LOC_COLORS[_locColorMap[key]];
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+const S = {
+  user         : localStorage.getItem('inv_user') || '',
+  apiUrl       : localStorage.getItem('inv_url')  || CONFIG.API_URL,
+  assets       : [],
+  filtered     : [],
+  filterSt     : 'all',
+  filterLoc    : 'all',   // ★ 地點篩選
+  viewMode     : 'list',  // 'list' | 'grid'
+  editAsset    : null,
+  pendingPhoto : null,
+  pendingImport: null,
+};
+
+/* ══════════════════════════════════════════════════════════
+   DOM SHORTHAND
+══════════════════════════════════════════════════════════ */
+const $el = id => document.getElementById(id);
+
+/* ══════════════════════════════════════════════════════════
+   API HELPERS
+   ─────────────────────────────────────────────────────────
+   apiPost 修正：JSON payload 放在 fetch 的 body 中，
+   Content-Type 改用 text/plain 避免 CORS preflight，
+   GAS doPost 透過 e.postData.contents 讀取。
+══════════════════════════════════════════════════════════ */
+function getApiUrl() { return S.apiUrl || CONFIG.API_URL; }
+
+async function apiFetch(url, opts) {
+  var resp = await fetch(url, Object.assign({ redirect: 'follow' }, opts || {}));
+  if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
+  var text = await resp.text();
+  var json;
+  try { json = JSON.parse(text); }
+  catch (e) { throw new Error('伺服器回傳非 JSON：' + text.slice(0, 160)); }
+  if (!json.ok) { throw new Error(json.error || '伺服器回傳錯誤'); }
+  return json.data;
+}
+
+function apiGet(action) {
+  return apiFetch(getApiUrl() + '?action=' + encodeURIComponent(action));
+}
+
+/*
+  POST：payload 放在 body 中（text/plain 不會觸發 CORS preflight）。
+  GAS doPost 優先讀 e.postData.contents，向下相容也支援 e.parameter.payload。
+*/
+function apiPost(body) {
+  return apiFetch(getApiUrl(), {
+    method : 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body   : JSON.stringify(body),
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', function () {
+  var sel = $el('login-name');
+  CONFIG.MEMBERS.forEach(function (m) {
+    var opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+  if (S.apiUrl) { $el('settings-url').textContent = S.apiUrl; }
+  if (S.user) { launchApp(); }
+  else {
+    $el('splash').classList.add('hidden');
+    $el('login-screen').classList.remove('hidden');
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════════════════ */
+function doLogin() {
+  var name = $el('login-name').value;
+  if (!name) { toast('請選擇您的名字', 'warn'); return; }
+  S.user = name;
+  localStorage.setItem('inv_user', name);
+  $el('login-screen').classList.add('hidden');
+  $el('app').style.display = 'flex';
+  $el('splash').classList.add('hidden');
+  initApp();
+}
+function doLogout() { localStorage.removeItem('inv_user'); location.reload(); }
+function launchApp() {
+  $el('splash').classList.add('hidden');
+  $el('app').style.display = 'flex';
+  initApp();
+}
+function initApp() {
+  $el('user-avatar').textContent    = S.user ? S.user[0] : '?';
+  $el('user-name-label').textContent = S.user;
+  $el('settings-user').textContent  = S.user;
+  $el('settings-url').textContent   = S.apiUrl || '（未設定）';
+  loadData(false);
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOAD DATA
+══════════════════════════════════════════════════════════ */
+async function loadData(showToast) {
+  if (!getApiUrl()) { toast('尚未設定 API 網址', 'err'); return; }
+  setSyncStatus('syncing', '⟳');
+  try {
+    var data = await apiGet('read');
+    S.assets = Array.isArray(data) ? data : [];
+    // 重設顏色快取以便重新計算
+    _locColorMap = {};
+    _locColorIdx = 0;
+    // 預先建立地點顏色對映
+    S.assets.forEach(function (a) { if (a.loc) { getLocColor(a.loc); } });
+    setSyncStatus('idle', '● 已同步');
+    if (showToast) { toast('✅ 讀取完成：' + S.assets.length + ' 筆資產', 'ok'); }
+    buildLocChips();
+    applyFilter();
+    updateProgress();
+    if ($el('page-dash').classList.contains('active')) { updateDashboard(); }
+  } catch (e) {
+    setSyncStatus('error', '⚠ 錯誤');
+    toast('讀取失敗：' + e.message, 'err');
+    renderEmpty('連線失敗，請檢查 API 網址或網路', '⚠️');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   ★ 功能①② — 樓層/房間快速篩選 chips + 地點顏色標記
+══════════════════════════════════════════════════════════ */
+function buildLocChips() {
+  var row = $el('loc-chip-row');
+  if (!row) { return; }
+
+  // 蒐集所有唯一地點（以 split('-')[0] 分組）
+  var seen = {};
+  S.assets.forEach(function (a) {
+    if (!a.loc) { return; }
+    var parts   = a.loc.split('-');
+    var floor   = parts[0].trim() || a.loc;
+    seen[floor] = true;
+  });
+  var floors = Object.keys(seen).sort();
+
+  row.innerHTML = '';
+  if (!floors.length) { return; }
+
+  // 全部 chip
+  var allChip = document.createElement('div');
+  allChip.className = 'loc-chip' + (S.filterLoc === 'all' ? ' active' : '');
+  allChip.textContent = '📍 全部';
+  allChip.style.background   = '#f1f3f4';
+  allChip.style.color        = '#5f6368';
+  allChip.style.borderColor  = S.filterLoc === 'all' ? '#5f6368' : 'transparent';
+  allChip.onclick = function () { setLocChip('all', this); };
+  row.appendChild(allChip);
+
+  floors.forEach(function (floor) {
+    var c     = getLocColor(floor + '-');   // 以 floor 為 key
+    var chip  = document.createElement('div');
+    chip.className = 'loc-chip' + (S.filterLoc === floor ? ' active' : '');
+    chip.dataset.loc = floor;
+    chip.style.background  = c.bg;
+    chip.style.color       = c.text;
+    chip.style.borderColor = S.filterLoc === floor ? c.dot : 'transparent';
+    if (S.filterLoc === floor) {
+      chip.style.setProperty('--loc-color-alpha', c.glow);
+    }
+    // 加上顏色 dot
+    chip.innerHTML =
+      '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;' +
+      'background:' + c.dot + ';margin-right:4px;box-shadow:0 0 0 2px ' + c.glow + ';"></span>' +
+      esc(floor);
+    chip.onclick = (function (f, ch) {
+      return function () { setLocChip(f, ch); };
+    })(floor, chip);
+    row.appendChild(chip);
+  });
+}
+
+function setLocChip(loc, el) {
+  S.filterLoc = loc;
+  // 重設所有 loc-chip 樣式
+  document.querySelectorAll('.loc-chip').forEach(function (c) {
+    c.classList.remove('active');
+    c.style.borderColor = 'transparent';
+    c.style.removeProperty('--loc-color-alpha');
+  });
+  el.classList.add('active');
+  if (loc !== 'all') {
+    var c = getLocColor(loc + '-');
+    el.style.borderColor = c.dot;
+    el.style.setProperty('--loc-color-alpha', c.glow);
+  } else {
+    el.style.borderColor = '#5f6368';
+  }
+  applyFilter();
+}
+
+/* ══════════════════════════════════════════════════════════
+   ★ 功能③ — 毫秒級即時搜尋 (requestAnimationFrame)
+══════════════════════════════════════════════════════════ */
+var _ft = null;
+function scheduleFilter() {
+  if (_ft) { cancelAnimationFrame(_ft); }
+  _ft = requestAnimationFrame(applyFilter);
+}
+
+function setChip(status, el) {
+  S.filterSt = status;
+  document.querySelectorAll('.chip').forEach(function (c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  var q        = ($el('search-inp').value || '').toLowerCase().trim();
+  var myOnly   = $el('my-toggle').checked;
+  var hideDone = $el('hide-done-toggle').checked;
+
+  S.filtered = S.assets.filter(function (a) {
+    // 狀態篩選
+    if (S.filterSt !== 'all' && (a.status || '').trim() !== S.filterSt) { return false; }
+    // 隱藏已盤點
+    if (hideDone && (a.status || '').trim() === '已盤點') { return false; }
+    // 地點篩選（比對 split('-')[0]）
+    if (S.filterLoc !== 'all') {
+      var parts = (a.loc || '').split('-');
+      var floor = parts[0].trim() || a.loc;
+      if (floor !== S.filterLoc) { return false; }
+    }
+    // 我的任務
+    if (myOnly && (a.assignee || '').trim() !== S.user) { return false; }
+    // 關鍵字
+    if (q) {
+      var inName = (a.name || '').toLowerCase().includes(q);
+      var inSn   = (a.sn   || '').toLowerCase().includes(q);
+      var inLoc  = (a.loc  || '').toLowerCase().includes(q);
+      if (!inName && !inSn && !inLoc) { return false; }
+    }
+    return true;
+  });
+
+  renderList();
+  updateProgress();
+}
+
+/* ══════════════════════════════════════════════════════════
+   ★ 功能⑤ — 進度詳情條
+══════════════════════════════════════════════════════════ */
+function updateProgress() {
+  var total   = S.assets.length;
+  var doneN   = S.assets.filter(function (a) { return (a.status||'').trim()==='已盤點'; }).length;
+  var pendN   = S.assets.filter(function (a) { return (a.status||'').trim()==='待盤點'; }).length;
+  var missN   = S.assets.filter(function (a) { return (a.status||'').trim()==='資產遺失'; }).length;
+  var dmgN    = S.assets.filter(function (a) { return (a.status||'').trim()==='設備損壞'; }).length;
+  var pct     = total > 0 ? Math.round(doneN / total * 100) : 0;
+
+  $el('prog-fill').style.width  = pct + '%';
+  $el('prog-count').textContent = doneN + ' / ' + total;
+  $el('prog-label').textContent = '盤點進度 ' + pct + '%';
+
+  // 詳情小標籤
+  var detail = $el('prog-detail');
+  if (detail) {
+    detail.innerHTML =
+      (doneN ? '<span class="prog-detail-item" style="background:var(--green-l);color:var(--green);">✅ 已盤點 ' + doneN + '</span>' : '') +
+      (pendN ? '<span class="prog-detail-item" style="background:var(--yellow-l);color:var(--yellow);">🕐 待盤點 ' + pendN + '</span>' : '') +
+      (missN ? '<span class="prog-detail-item" style="background:var(--red-l);color:var(--red);">❌ 遺失 ' + missN + '</span>' : '') +
+      (dmgN  ? '<span class="prog-detail-item" style="background:var(--orange-l);color:var(--orange);">⚠️ 損壞 ' + dmgN  + '</span>' : '');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   ★ 功能④ — 視圖切換 (list / grid)
+══════════════════════════════════════════════════════════ */
+function setViewMode(mode) {
+  S.viewMode = mode;
+  $el('view-btn-list').classList.toggle('active', mode === 'list');
+  $el('view-btn-grid').classList.toggle('active', mode === 'grid');
+  renderList();
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER LIST
+══════════════════════════════════════════════════════════ */
+var STATUS_BADGE = {
+  '已盤點' : 'sb-checked',
+  '待盤點' : 'sb-pending',
+  '資產遺失': 'sb-missing',
+  '設備損壞': 'sb-damaged',
+};
+var CARD_BORDER = {
+  '已盤點' : 'card-s-checked',
+  '待盤點' : 'card-s-pending',
+  '資產遺失': 'card-s-missing',
+  '設備損壞': 'card-s-damaged',
+};
+var STATUS_DOT_COLOR = {
+  '已盤點' : '#0f9d58',
+  '待盤點' : '#e37400',
+  '資產遺失': '#d93025',
+  '設備損壞': '#e8710a',
+};
+
+function renderList() {
+  var container = $el('asset-container');
+  container.innerHTML = '';
+
+  if (!S.filtered.length) {
+    renderEmpty(
+      S.assets.length ? '沒有符合條件的資產' : '尚無資料，請先導入或確認連線',
+      '📭'
+    );
+    return;
+  }
+
+  var frag = document.createDocumentFragment();
+
+  if (S.viewMode === 'grid') {
+    var grid = document.createElement('div');
+    grid.className = 'asset-grid';
+    S.filtered.forEach(function (a) { grid.appendChild(buildThumbCard(a)); });
+    frag.appendChild(grid);
+  } else {
+    var listWrap = document.createElement('div');
+    listWrap.className = 'asset-list';
+    S.filtered.forEach(function (a) { listWrap.appendChild(buildCard(a)); });
+    frag.appendChild(listWrap);
+  }
+
+  container.appendChild(frag);
+}
+
+function renderEmpty(msg, icon) {
+  $el('asset-container').innerHTML =
+    '<div class="empty">' +
+    '<div class="empty-icon">' + (icon || '📭') + '</div>' +
+    '<div class="empty-title">' + esc(msg) + '</div>' +
+    '<div class="empty-sub">試試調整搜尋條件，或至統計頁刷新資料。</div>' +
+    '</div>';
+}
+
+/* ── 列表卡片 ─────────────────────────────────────────── */
+function buildCard(a) {
+  var status  = (a.status || '待盤點').trim();
+  var locColor = a.loc ? getLocColor(a.loc) : null;
+  var div      = document.createElement('div');
+  div.className = 'asset-card ' + (CARD_BORDER[status] || 'card-s-pending');
+
+  var locHtml = '';
+  if (a.loc) {
+    var dotStyle = locColor
+      ? 'background:' + locColor.dot + ';box-shadow:0 0 0 2px ' + locColor.glow + ';'
+      : 'background:var(--pri);';
+    locHtml =
+      '<div class="card-row"><span class="card-row-icon">📍</span>' +
+      '<span class="loc-color-dot" style="' + dotStyle + '"></span>' +
+      '<span class="card-loc">' + esc(a.loc) + '</span></div>';
+  }
+
+  // ✅ 新的寫法 (支援多圖)
+var photoHtml = '';
+if (Array.isArray(a.photo) && a.photo.length > 0) {
+  // 遍歷陣列中的每個網址，產生多張圖片
+  photoHtml = a.photo.map(function(url) {
+    return '<img class="card-photo-thumb" src="' + esc(url) + '" loading="lazy" onerror="this.style.display=\'none\'" alt="照片" style="margin-bottom:5px; display:block;">';
+  }).join(''); // 將陣列組合回字串
+}
+
+  div.innerHTML =
+    '<div class="card-top">' +
+      '<div class="card-sn">' + esc(a.sn || '—') + '</div>' +
+      '<div class="status-badge ' + (STATUS_BADGE[status] || 'sb-pending') + '">' + esc(status) + '</div>' +
+    '</div>' +
+    '<div class="card-body">' +
+      '<div class="card-name">' + esc(a.name || '（未命名）') + '</div>' +
+      '<div class="card-rows">' +
+        locHtml +
+        (a.brand    ? '<div class="card-row"><span class="card-row-icon">🏷</span>' + esc(a.brand) + '</div>' : '') +
+        (a.assignee ? '<div class="card-row"><span class="card-row-icon">👤</span><span class="assignee-chip">' + esc(a.assignee) + '</span></div>' : '') +
+        (a.note     ? '<div class="card-row"><span class="card-row-icon">📝</span>' + esc(a.note) + '</div>' : '') +
+      '</div>' +
+    '</div>' +
+    photoHtml +
+    '<div class="card-footer">' +
+      '<button class="btn btn-primary btn-sm" onclick="openDetail(' + a.rowIndex + ')">📝 盤點 / 編輯</button>' +
+      (status !== '已盤點'
+        ? '<button class="btn btn-green btn-sm" onclick="quickCheck(' + a.rowIndex + ', event)">✅ 快速確認</button>'
+        : '') +
+    '</div>';
+
+  return div;
+}
+
+/* ── 縮圖卡片 ─────────────────────────────────────────── */
+function buildThumbCard(a) {
+  var status    = (a.status || '待盤點').trim();
+  var dotColor  = STATUS_DOT_COLOR[status] || '#e37400';
+  var div       = document.createElement('div');
+  div.className = 'thumb-card';
+
+  var imgHtml = a.photo
+    ? '<img src="' + esc(a.photo) + '" loading="lazy" onerror="this.remove()" alt="照片">'
+    : '<span style="opacity:.4;">🖼</span>';
+
+  div.innerHTML =
+    '<div class="thumb-img-wrap">' +
+      imgHtml +
+      '<div class="thumb-status-dot" style="background:' + dotColor + ';"></div>' +
+    '</div>' +
+    '<div class="thumb-body">' +
+      '<div class="thumb-name">' + esc(a.name || '（未命名）') + '</div>' +
+      (a.loc ? '<div class="thumb-loc">📍 ' + esc(a.loc) + '</div>' : '') +
+    '</div>';
+
+  div.onclick = function () { openDetail(a.rowIndex); };
+  return div;
+}
+
+/* ══════════════════════════════════════════════════════════
+   QUICK CHECK
+══════════════════════════════════════════════════════════ */
+async function quickCheck(rowIndex, event) {
+  event.stopPropagation();
+  var a = S.assets.find(function (x) { return x.rowIndex === rowIndex; });
+  if (!a) { return; }
+  var prevStatus = a.status;
+  a.status   = '已盤點';
+  a.assignee = a.assignee || S.user;
+  try {
+    setSyncStatus('syncing', '⟳');
+    await apiPost({ action:'update', rowIndex:rowIndex, status:'已盤點', assignee:a.assignee, note:a.note, photo:a.photo });
+    setSyncStatus('idle', '● 已同步');
+    toast('✅ ' + a.name + ' 已確認', 'ok');
+    applyFilter();
+    updateProgress();
+  } catch (e) {
+    a.status = prevStatus;
+    setSyncStatus('error', '⚠');
+    toast('儲存失敗：' + e.message, 'err');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DETAIL SHEET
+══════════════════════════════════════════════════════════ */
+function openDetail(rowIndex) {
+  var a = S.assets.find(function (x) { return x.rowIndex === rowIndex; });
+  if (!a) { toast('找不到資產', 'err'); return; }
+  S.editAsset    = a;
+  S.pendingPhoto = null;
+  delete a._pendingStatus;
+  $el('sheet-title').textContent = a.name || '資產詳情';
+  $el('sheet-body').innerHTML    = buildDetailHTML(a);
+  $el('sheet-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function buildDetailHTML(a) {
+  var status     = (a.status || '待盤點').trim();
+  var statusOpts = [
+    { v:'已盤點',  cls:'sop-checked', label:'✅ 已盤點' },
+    { v:'待盤點',  cls:'sop-pending', label:'🕐 待盤點' },
+    { v:'資產遺失',cls:'sop-missing', label:'❌ 資產遺失' },
+    { v:'設備損壞',cls:'sop-damaged', label:'⚠️ 設備損壞' },
+  ];
+
+  var photoSection = a.photo
+    ? '<div id="photo-result" class="photo-result-wrap">' +
+        '<img src="' + esc(a.photo) + '" onerror="this.style.display=\'none\'" alt="現有照片">' +
+        '<a class="photo-link" href="' + esc(a.photo) + '" target="_blank">🔗 查看原圖 (Drive)</a>' +
+      '</div>'
+    : '<div id="photo-result"></div>';
+
+  var memberOpts = CONFIG.MEMBERS.map(function (m) {
+    return '<option value="' + m + '"' + ((a.assignee||'').trim()===m?' selected':'') + '>' + m + '</option>';
+  }).join('');
+
+  return (
+    '<div class="grid2">' +
+      '<div><label class="fl">序號</label><div class="fv">' + esc(a.seq||'—') + '</div></div>' +
+      '<div><label class="fl">財產編號</label><div class="fv hi">' + esc(a.sn||'—') + '</div></div>' +
+    '</div>' +
+    '<div><label class="fl">財產名稱</label>' +
+      '<div class="fv" style="font-size:17px;font-weight:800;">' + esc(a.name||'—') + '</div></div>' +
+    '<div class="grid2">' +
+      '<div><label class="fl">廠牌形式</label><div class="fv">' + esc(a.brand||'—') + '</div></div>' +
+      '<div><label class="fl">取得日期</label><div class="fv">' + esc(a.date||'—') + '</div></div>' +
+      '<div><label class="fl">數量 / 單位</label><div class="fv">' + esc(a.qty||'1') + ' ' + esc(a.unit||'') + '</div></div>' +
+      '<div><label class="fl">存置地點</label><div class="fv" style="color:var(--pri);font-weight:700;">' + esc(a.loc||'—') + '</div></div>' +
+    '</div>' +
+    '<div><label class="fl">指派盤點人員</label>' +
+      '<select id="ed-assignee">' + memberOpts + '</select></div>' +
+    '<div><label class="fl">盤點狀態</label>' +
+      '<div class="status-grid">' +
+        statusOpts.map(function (o) {
+          return '<div class="status-opt ' + (status===o.v ? o.cls : '') + '" ' +
+            'data-v="' + o.v + '" data-cls="' + o.cls + '" onclick="pickStatus(this)">' +
+            o.label + '</div>';
+        }).join('') +
+      '</div></div>' +
+    '<div><label class="fl">地點備註</label>' +
+      '<textarea id="ed-note" placeholder="填寫地點說明、異常情況…（選填）">' + esc(a.note||'') + '</textarea></div>' +
+    '<div><label class="fl">財產照片</label>' +
+      photoSection +
+      '<div class="photo-drop" id="photo-drop" style="margin-top:10px;"' +
+        ' ondragover="event.preventDefault();this.classList.add(\'over\')"' +
+        ' ondragleave="this.classList.remove(\'over\')"' +
+        ' ondrop="handleDrop(event)">' +
+        '<input type="file" accept="image/*" capture="environment" onchange="handlePhotoFile(this.files[0])">' +
+        '<div class="photo-drop-icon">📷</div>' +
+        '<div class="photo-drop-text">' + (a.photo ? '重新拍攝或更換照片' : '點擊拍照 / 選擇圖片') + '</div>' +
+        '<div class="photo-drop-sub">照片將上傳至 Google Drive，存連結非 Base64</div>' +
+      '</div>' +
+      '<div id="upload-status"></div></div>' +
+    '<button id="save-btn" class="btn btn-primary w-full" style="font-size:16px;min-height:52px;" onclick="saveDetail()">' +
+      '💾 儲存盤點結果</button>' +
+    '<div style="height:8px;"></div>'
+  );
+}
+
+function pickStatus(el) {
+  document.querySelectorAll('.status-opt').forEach(function (o) { o.className = 'status-opt'; });
+  el.className = 'status-opt ' + el.dataset.cls;
+  S.editAsset._pendingStatus = el.dataset.v;
+}
+
+/* ── Photo upload ─────────────────────────────────────── */
+function handleDrop(e) {
+  e.preventDefault();
+  var pd = $el('photo-drop');
+  if (pd) { pd.classList.remove('over'); }
+  var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) { handlePhotoFile(file); }
+}
+
+function compressImage(file, maxPx, quality) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      var w = img.width, h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w >= h) { h = Math.round(h * maxPx / w); w = maxPx; }
+        else        { w = Math.round(w * maxPx / h); h = maxPx; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function (blob) {
+        if (!blob) { reject(new Error('Canvas 壓縮失敗')); return; }
+        var mime = (file.type === 'image/png') ? 'image/png' : 'image/jpeg';
+        resolve(new File([blob], file.name, { type: mime }));
+      }, (file.type === 'image/png') ? 'image/png' : 'image/jpeg', quality);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('無法讀取圖片')); };
+    img.src = url;
+  });
+}
+
+function setRingProgress(pct) {
+  var ring = document.querySelector('.upload-ring-fill');
+  if (!ring) { return; }
+  ring.style.strokeDashoffset = 138.2 - (138.2 * pct / 100);
+}
+
+async function handlePhotoFile(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    toast('請選擇圖片檔案', 'warn'); return;
+  }
+  var saveBtn = $el('save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '📷 照片上傳中…'; }
+  S.pendingPhoto = null;
+
+  var statusEl = $el('upload-status');
+  statusEl.innerHTML =
+    '<div class="upload-ring-wrap">' +
+      '<svg class="upload-ring-svg" width="56" height="56" viewBox="0 0 56 56">' +
+        '<circle class="upload-ring-track" cx="28" cy="28" r="22"/>' +
+        '<circle class="upload-ring-fill"  cx="28" cy="28" r="22"/>' +
+      '</svg>' +
+      '<div class="upload-ring-label" id="ring-label">壓縮中…</div>' +
+    '</div>';
+
+  try {
+    setRingProgress(10);
+    var compressed = await compressImage(file, 1200, 0.8);
+    setRingProgress(30);
+    var labelEl = $el('ring-label');
+    if (labelEl) { labelEl.textContent = '上傳至 Drive…'; }
+    var b64 = await fileToB64(compressed);
+    var raw = b64.split(',')[1];
+    setRingProgress(50);
+    if (labelEl) { labelEl.textContent = '同步至試算表…'; }
+    var data = await apiPost({ action:'uploadPhoto', base64:raw, mimeType:compressed.type, fileName:Date.now()+'_'+file.name });
+    setRingProgress(100);
+    if (!data || !data.url) { throw new Error('GAS 未回傳圖片 URL'); }
+    S.pendingPhoto = data.url;
+    statusEl.innerHTML =
+      '<div style="color:var(--green);font-size:13px;margin-top:4px;display:flex;align-items:center;gap:8px;">' +
+      '<span style="font-size:18px;">✅</span>' +
+      '<span>上傳成功 · <a class="photo-link" href="' + esc(data.url) + '" target="_blank">點此查看</a></span></div>';
+    $el('photo-result').innerHTML =
+      '<div class="photo-result-wrap">' +
+        '<img src="' + esc(data.url) + '" onerror="this.style.display=\'none\'" alt="新照片">' +
+        '<a class="photo-link" href="' + esc(data.url) + '" target="_blank">🔗 查看原圖 (Drive)</a>' +
+      '</div>';
+    toast('照片上傳成功', 'ok');
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 儲存盤點結果'; }
+  } catch (e) {
+    statusEl.innerHTML = '<div style="color:var(--red);font-size:13px;margin-top:6px;">❌ 上傳失敗：' + esc(e.message) + '</div>';
+    toast('照片上傳失敗：' + e.message, 'err');
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 儲存盤點結果（照片未更新）'; }
+  }
+}
+
+function fileToB64(file) {
+  return new Promise(function (res, rej) {
+    var r = new FileReader();
+    r.onload  = function (e) { res(e.target.result); };
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+/* ── Save ─────────────────────────────────────────────── */
+async function saveDetail() {
+  var a = S.editAsset;
+  if (!a) { closeSheet(); return; }
+  var newStatus = (a._pendingStatus || a.status || '待盤點').trim();
+  var newNote   = ($el('ed-note')     ? $el('ed-note').value     : a.note)     || '';
+  var newAssign = ($el('ed-assignee') ? $el('ed-assignee').value : a.assignee) || S.user;
+  var newPhoto  = S.pendingPhoto || a.photo || '';
+
+  // Optimistic local update
+  a.status   = newStatus;
+  a.note     = newNote;
+  a.assignee = newAssign;
+  a.photo    = newPhoto;
+  delete a._pendingStatus;
+
+  try {
+    setSyncStatus('syncing', '⟳');
+    await apiPost({ action:'update', rowIndex:a.rowIndex, status:newStatus, note:newNote, assignee:newAssign, photo:newPhoto });
+    setSyncStatus('idle', '● 已同步');
+    toast('✅ 儲存成功', 'ok');
+    closeSheet();
+    applyFilter();
+    updateProgress();
+  } catch (e) {
+    setSyncStatus('error', '⚠');
+    toast('儲存失敗：' + e.message, 'err');
+  }
+}
+
+function closeSheet() {
+  $el('sheet-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+  S.editAsset    = null;
+  S.pendingPhoto = null;
+}
+function closeSheetOnBg(e) {
+  if (e.target === $el('sheet-overlay')) { closeSheet(); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════════════ */
+function updateDashboard() {
+  var assets = S.assets;          // ← 修正變數命名衝突：改用 assets 而非 a
+  var tot    = assets.length;
+  var doneN  = assets.filter(function (x) { return (x.status||'').trim()==='已盤點'; }).length;
+  var pendN  = assets.filter(function (x) { return (x.status||'').trim()==='待盤點'; }).length;
+  var missN  = assets.filter(function (x) { return (x.status||'').trim()==='資產遺失'; }).length;
+  var dmgN   = assets.filter(function (x) { return (x.status||'').trim()==='設備損壞'; }).length;
+  var pct    = tot > 0 ? Math.round(doneN / tot * 100) : 0;
+
+  /* ① Stat cards */
+  $el('stats-grid').innerHTML =
+    '<div class="stat-card"><div class="stat-n" style="color:var(--pri)">'    + tot   + '</div><div class="stat-l">資產總數</div></div>' +
+    '<div class="stat-card"><div class="stat-n" style="color:var(--green)">'  + doneN + '</div><div class="stat-l">已盤點</div></div>' +
+    '<div class="stat-card"><div class="stat-n" style="color:var(--yellow)">' + pendN + '</div><div class="stat-l">待盤點</div></div>' +
+    '<div class="stat-card"><div class="stat-n" style="color:var(--red)">'    + (missN+dmgN) + '</div><div class="stat-l">異常</div></div>';
+
+  /* ② Segmented bar */
+  $el('dash-pct-label').textContent = pct + '%';
+  function setSegW(id, n) {
+    var el = $el(id);
+    if (el) { el.style.width = (tot > 0 ? (n / tot * 100).toFixed(1) : 0) + '%'; }
+  }
+  setSegW('seg-ok', doneN); setSegW('seg-pending', pendN);
+  setSegW('seg-damaged', dmgN); setSegW('seg-missing', missN);
+
+  /* ③ Pie */
+  var canvas = $el('pie-canvas');
+  var ctx    = canvas ? canvas.getContext('2d') : null;
+  if (ctx && tot > 0) {
+    var pieData = [
+      { label:'已盤點',  val:doneN, color:'#0f9d58' },
+      { label:'待盤點',  val:pendN, color:'#bdbdbd' },
+      { label:'設備損壞',val:dmgN,  color:'#e8710a' },
+      { label:'資產遺失',val:missN, color:'#d93025' },
+    ].filter(function (d) { return d.val > 0; });
+    var cx = 70, cy = 70, r = 60, gap = 0.03;
+    ctx.clearRect(0, 0, 140, 140);
+    var startAngle = -Math.PI / 2;
+    pieData.forEach(function (d) {
+      var sweep = (d.val / tot) * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle + gap/2, startAngle + sweep - gap/2);
+      ctx.closePath(); ctx.fillStyle = d.color; ctx.fill();
+      startAngle += sweep;
+    });
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.54, 0, Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.fillStyle = '#1a73e8';
+    ctx.font = 'bold 22px JetBrains Mono, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(pct + '%', cx, cy);
+    $el('pie-legend').innerHTML = pieData.map(function (d) {
+      return '<div class="pie-legend-item">' +
+        '<div class="pie-legend-left">' +
+          '<div class="pie-legend-dot" style="background:' + d.color + '"></div>' +
+          '<span class="pie-legend-label">' + d.label + '</span>' +
+        '</div>' +
+        '<span class="pie-legend-val">' + d.val + '</span>' +
+      '</div>';
+    }).join('');
+  } else if (ctx) {
+    ctx.clearRect(0, 0, 140, 140);
+    ctx.beginPath(); ctx.arc(70, 70, 60, 0, Math.PI*2);
+    ctx.fillStyle = '#e8eaed'; ctx.fill();
+    ctx.beginPath(); ctx.arc(70, 70, 32, 0, Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    $el('pie-legend').innerHTML = '<div style="color:var(--text3);font-size:13px;">尚無資料</div>';
+  }
+
+  /* ④ Member bars */
+  var memberStats = {};
+  CONFIG.MEMBERS.forEach(function (m) { memberStats[m] = { total:0, done:0 }; });
+  assets.forEach(function (x) {
+    var m = (x.assignee||'').trim();
+    if (m && memberStats[m]) {
+      memberStats[m].total++;
+      if ((x.status||'').trim()==='已盤點') { memberStats[m].done++; }
+    }
+  });
+  var memberArr = CONFIG.MEMBERS.map(function (m) {
+    var st = memberStats[m];
+    var p  = st.total > 0 ? Math.round(st.done / st.total * 100) : 0;
+    return { name:m, total:st.total, done:st.done, pct:p, isMe:m===S.user };
+  });
+  memberArr.sort(function (x, y) { return y.pct - x.pct || y.done - x.done; });
+  $el('member-bars').innerHTML = memberArr.map(function (d) {
+    return '<div class="member-bar-col">' +
+      '<div class="member-bar-pct' + (d.isMe?' me':'') + '">' + d.pct + '%</div>' +
+      '<div class="member-bar-track">' +
+        '<div class="member-bar-fill' + (d.isMe?' me':'') + '" style="height:' + d.pct + '%"></div>' +
+      '</div>' +
+      '<div class="member-bar-name' + (d.isMe?' me':'') + '">' + esc(d.name) + (d.isMe?' ★':'') + '</div>' +
+      '<div class="member-bar-sub">' + d.done + '/' + d.total + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   EXCEL IMPORT / EXPORT
+══════════════════════════════════════════════════════════ */
+var XL_MAP = [
+  {e:'序號',f:'seq'},{e:'財產編號',f:'sn'},{e:'財產名稱',f:'name'},
+  {e:'廠牌形式',f:'brand'},{e:'取得日期',f:'date'},{e:'數量',f:'qty'},
+  {e:'單位',f:'unit'},{e:'存置地點',f:'loc'},{e:'盤點人員',f:'assignee'},
+  {e:'財產照片',f:'photo'},{e:'狀態',f:'status'},{e:'地點備註',f:'note'},
+];
+
+function importExcel(inp) {
+  var file = inp.files[0];
+  if (!file) { return; }
+  var reader = new FileReader();
+  reader.onload = function (ev) {
+    try {
+      var wb   = XLSX.read(ev.target.result, { type:'array', cellDates:true, raw:false });
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'', raw:false });
+      if (!rows.length) { toast('檔案無資料', 'err'); inp.value = ''; return; }
+      var hk = Object.keys(rows[0]);
+      var km = {};
+      XL_MAP.forEach(function (item) {
+        var k = hk.find(function (h) { return h.trim()===item.e || h.includes(item.e); });
+        if (k) { km[k] = item.f; }
+      });
+      var parsed = rows.map(function (row) {
+        var obj = {seq:'',sn:'',name:'',brand:'',date:'',qty:'1',unit:'',loc:'',assignee:'',photo:'',status:'待盤點',note:''};
+        Object.keys(km).forEach(function (k) {
+          var v = row[k];
+          if (v instanceof Date) { v = v.toLocaleDateString('zh-TW'); }
+          obj[km[k]] = String(v||'').trim();
+        });
+        return obj;
+      }).filter(function (o) { return o.name || o.sn; });
+      S.pendingImport = parsed;
+      $el('import-result').innerHTML =
+        '<div class="ir-ok">✔ 成功解析 ' + parsed.length + ' 筆資料</div>' +
+        '<div style="margin-top:6px;color:var(--text2);font-size:12px;line-height:1.7;">' +
+        '按「推送至試算表」將資料批次寫入 Google Sheets。<br>' +
+        '⚠️ 此操作會在現有資料後方<strong>追加</strong>，不會覆蓋已有資料。</div>';
+      $el('import-push-btn').classList.remove('hidden');
+      $el('import-modal').classList.remove('hidden');
+    } catch (e) { toast('解析失敗：' + e.message, 'err'); console.error(e); }
+    inp.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function pushImport() {
+  var rows = S.pendingImport;
+  if (!rows || !rows.length) { return; }
+  var btn = $el('import-push-btn');
+  btn.disabled = true; btn.textContent = '⟳ 推送中…';
+  try {
+    var matrix = rows.map(function (a) {
+      return [a.seq,a.sn,a.name,a.brand,a.date,a.qty,a.unit,a.loc,a.assignee,a.photo,a.status,a.note];
+    });
+    await apiPost({ action:'batchAppend', rows:matrix });
+    toast('✅ 已推送 ' + rows.length + ' 筆', 'ok');
+    $el('import-modal').classList.add('hidden');
+    S.pendingImport = null;
+    await loadData(true);
+  } catch (e) {
+    toast('推送失敗：' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '⬆ 推送至試算表';
+  }
+}
+
+function exportExcel() {
+  if (!S.assets.length) { toast('無資料可匯出', 'warn'); return; }
+  var rows = S.assets.map(function (a) {
+    return { '序號':a.seq||'','財產編號':a.sn||'','財產名稱':a.name||'','廠牌形式':a.brand||'',
+      '取得日期':a.date||'','數量':a.qty||'','單位':a.unit||'','存置地點':a.loc||'',
+      '盤點人員':a.assignee||'','財產照片':a.photo||'','狀態':a.status||'','地點備註':a.note||'' };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:16},{wch:24},{wch:20},{wch:12},{wch:5},{wch:5},{wch:18},{wch:8},{wch:45},{wch:8},{wch:24}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '資產盤點表');
+  var d = new Date(), pad = function (n) { return String(n).padStart(2,'0'); };
+  XLSX.writeFile(wb, '資產盤點_' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '.xlsx');
+  toast('📤 Excel 匯出完成', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════
+   PAGE NAVIGATION
+══════════════════════════════════════════════════════════ */
+function switchPage(id, el) {
+  document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); p.classList.add('hidden'); });
+  document.querySelectorAll('.nav-btn').forEach(function (n) { n.classList.remove('active'); });
+  var pg = $el('page-' + id);
+  pg.classList.remove('hidden');
+  pg.classList.add('active');
+  el.classList.add('active');
+  if (id === 'dash')     { updateDashboard(); }
+  if (id === 'settings') { $el('settings-user').textContent = S.user; $el('settings-url').textContent = S.apiUrl||'（未設定）'; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════════════════ */
+function editApiUrl() {
+  var url = prompt('請貼入 Apps Script 部署網址：', S.apiUrl);
+  if (url && url.startsWith('https://')) {
+    S.apiUrl = url.trim();
+    localStorage.setItem('inv_url', S.apiUrl);
+    $el('settings-url').textContent = S.apiUrl;
+    toast('✅ 網址已更新', 'ok');
+    loadData(true);
+  }
+}
+async function pingServer() {
+  $el('ping-result').textContent = '測試中…';
+  try {
+    var d = await apiGet('ping');
+    $el('ping-result').textContent = '✅ 連線成功 ' + (d.time||'');
+  } catch (e) {
+    $el('ping-result').textContent = '❌ 失敗：' + e.message;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SYNC / TOAST / UTILS
+══════════════════════════════════════════════════════════ */
+function setSyncStatus(state, label) {
+  var el = $el('sync-badge');
+  el.className = 'sync-badge ' + state;
+  el.textContent = label;
+}
+
+function toast(msg, type) {
+  var stack = $el('toast-stack');
+  var t = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  var icons = { ok:'✅', err:'❌', warn:'⚠️' };
+  t.innerHTML = '<span>' + (icons[type]||'ℹ️') + '</span><span>' + esc(msg) + '</span>';
+  stack.appendChild(t);
+  setTimeout(function () { t.remove(); }, 3500);
+}
+
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
