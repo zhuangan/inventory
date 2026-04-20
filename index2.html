@@ -1539,14 +1539,13 @@ function buildCard(a) {
   }
 
 // ✅ 修正版：確保 url 是字串且不被 esc 破壞網址格式
-var photoHtml = '';
-if (Array.isArray(a.photo) && a.photo.length > 0) {
-  photoHtml = a.photo.map(function(url) {
-    // 網址不需要 esc，否則其中的 & 或 = 會變亂碼導致圖片跑不出來
-    return '<img class="card-photo-thumb" src="' + url + '" loading="lazy" onerror="this.style.display=\'none\'" alt="照片" style="margin-bottom:5px; display:block; width:100%;">';
-  }).join('');
-}
-
+// 核心修正：將 esc() 拿掉，直接使用原始 url
+  var photoHtml = '';
+  if (Array.isArray(a.photo) && a.photo.length > 0) {
+    photoHtml = a.photo.map(function(url) {
+      return '<img class="card-photo-thumb" src="' + url + '" loading="lazy" onerror="this.style.display=\'none\'" alt="照片" style="margin-bottom:8px; display:block; width:100%; border-radius:4px;">';
+    }).join('');
+  }
   div.innerHTML =
     '<div class="card-top">' +
       '<div class="card-sn">' + esc(a.sn || '—') + '</div>' +
@@ -1580,12 +1579,12 @@ function buildThumbCard(a) {
   div.className = 'thumb-card';
 
   // ✅ 修正：處理陣列，縮圖通常只顯示第一張圖
+  // 核心修正：從陣列中取第一張圖，且不使用 esc()
   var firstPhoto = (Array.isArray(a.photo) && a.photo.length > 0) ? a.photo[0] : null;
 
   var imgHtml = firstPhoto
     ? '<img src="' + firstPhoto + '" loading="lazy" onerror="this.remove()" alt="照片">'
     : '<span style="opacity:.4;">🖼</span>';
-
   div.innerHTML =
     '<div class="thumb-img-wrap">' +
       imgHtml +
