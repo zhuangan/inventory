@@ -1520,9 +1520,11 @@ function renderEmpty(msg, icon) {
     '</div>';
 }
 
-/* ── 列表卡片 ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   buildCard — 大卡片（多圖循環）
+══════════════════════════════════════════════════════════ */
 function buildCard(a) {
-  var status  = (a.status || '待盤點').trim();
+  var status   = (a.status || '待盤點').trim();
   var locColor = a.loc ? getLocColor(a.loc) : null;
   var div      = document.createElement('div');
   div.className = 'asset-card ' + (CARD_BORDER[status] || 'card-s-pending');
@@ -1538,16 +1540,17 @@ function buildCard(a) {
       '<span class="card-loc">' + esc(a.loc) + '</span></div>';
   }
 
-// --- 修正相簿預覽部分 ---
+  // ★ 修正①：photo 已是陣列，直接迭代，URL 不經 esc()
   var photoHtml = '';
-if (Array.isArray(a.photo) && a.photo.length > 0) {
-  photoHtml = a.photo.map(function(url) {
-    return '<img class="card-photo-thumb" src="' + url + '" ' + 
-           'loading="lazy" ' +
-           'style="width:100%; display:block; margin-bottom:8px; border-radius:4px; min-height:50px; background:#f0f0f0;" ' +
-           'onerror="console.log(\'圖片載入失敗:\', this.src); this.src=\'https://via.placeholder.com/150?text=No+Image\'" alt="照片">';
-  }).join('');
-}
+  if (Array.isArray(a.photo) && a.photo.length > 0) {
+    photoHtml = a.photo.map(function (url) {
+      // 用原始 url，不呼叫 esc()，避免 & → &amp; 破壞 Drive 參數
+      return '<img class="card-photo-thumb" src="' + url + '" ' +
+             'loading="lazy" ' +
+             'onerror="this.style.display=\'none\'" ' +
+             'alt="照片">';
+    }).join('');
+  }
 
   div.innerHTML =
     '<div class="card-top">' +
@@ -1574,23 +1577,28 @@ if (Array.isArray(a.photo) && a.photo.length > 0) {
   return div;
 }
 
-/* ── 縮圖卡片 ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   buildThumbCard — 縮圖卡片（取第一張）
+══════════════════════════════════════════════════════════ */
 function buildThumbCard(a) {
-  // ... 前方代碼不變 ...
+  var status   = (a.status || '待盤點').trim();
+  var dotColor = STATUS_DOT_COLOR[status] || '#e37400';
 
-  // ✅ 嚴謹修正：從陣列中取第一張圖作為縮圖，且移除 esc
+  // ★ 修正②：函式結構完整，div 宣告與 innerHTML 在同一作用域
+  var div = document.createElement('div');
+  div.className = 'thumb-card';
+
+  // ★ 修正③：陣列取第一張，URL 不經 esc()
   var firstPhoto = (Array.isArray(a.photo) && a.photo.length > 0) ? a.photo[0] : null;
 
   var imgHtml = firstPhoto
-    ? '<img src="' + firstPhoto + '" loading="lazy" style="width:100%; height:100%; object-fit:cover;" ' +
-      'onerror="this.src=\'https://via.placeholder.com/50?text=?\'" alt="照片">'
-    : '<span style="opacity:.4;">🖼</span>';
-
-  // ... 後方 innerHTML 代碼不變 ...
-}
+    ? '<img src="' + firstPhoto + '" loading="lazy" ' +
+      'style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" ' +
+      'onerror="this.style.display=\'none\'" alt="照片">'
+    : '<span style="font-size:32px;opacity:.4;">🖼</span>';
 
   div.innerHTML =
-    '<div class="thumb-img-wrap" style="width:50px; height:50px; overflow:hidden; background:#eee; display:flex; align-items:center; justify-content:center;">' +
+    '<div class="thumb-img-wrap">' +
       imgHtml +
       '<div class="thumb-status-dot" style="background:' + dotColor + ';"></div>' +
     '</div>' +
@@ -1602,45 +1610,10 @@ function buildThumbCard(a) {
   div.onclick = function () { openDetail(a.rowIndex); };
   return div;
 }
-/* ══════════════════════════════════════════════════════════
-   QUICK CHECK
-══════════════════════════════════════════════════════════ */
-async function quickCheck(rowIndex, event) {
-  event.stopPropagation();
-  var a = S.assets.find(function (x) { return x.rowIndex === rowIndex; });
-  if (!a) { return; }
-  var prevStatus = a.status;
-  a.status   = '已盤點';
-  a.assignee = a.assignee || S.user;
-  try {
-    setSyncStatus('syncing', '⟳');
-    await apiPost({ action:'update', rowIndex:rowIndex, status:'已盤點', assignee:a.assignee, note:a.note, photo:a.photo });
-    setSyncStatus('idle', '● 已同步');
-    toast('✅ ' + a.name + ' 已確認', 'ok');
-    applyFilter();
-    updateProgress();
-  } catch (e) {
-    a.status = prevStatus;
-    setSyncStatus('error', '⚠');
-    toast('儲存失敗：' + e.message, 'err');
-  }
-}
 
 /* ══════════════════════════════════════════════════════════
-   DETAIL SHEET
+   buildDetailHTML — 詳細視窗（顯示全部照片 + 原圖連結）
 ══════════════════════════════════════════════════════════ */
-function openDetail(rowIndex) {
-  var a = S.assets.find(function (x) { return x.rowIndex === rowIndex; });
-  if (!a) { toast('找不到資產', 'err'); return; }
-  S.editAsset    = a;
-  S.pendingPhoto = null;
-  delete a._pendingStatus;
-  $el('sheet-title').textContent = a.name || '資產詳情';
-  $el('sheet-body').innerHTML    = buildDetailHTML(a);
-  $el('sheet-overlay').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-}
-
 function buildDetailHTML(a) {
   var status     = (a.status || '待盤點').trim();
   var statusOpts = [
@@ -1650,21 +1623,24 @@ function buildDetailHTML(a) {
     { v:'設備損壞',cls:'sop-damaged', label:'⚠️ 設備損壞' },
   ];
 
- // ✅ 嚴謹修正：詳細視窗也顯示所有照片
-var photoSection = '';
-if (Array.isArray(a.photo) && a.photo.length > 0) {
-  photoSection = '<div id="photo-result" class="photo-result-wrap">' +
-    a.photo.map(function(url) {
-      return '<img src="' + url + '" style="width:100%; margin-bottom:5px; border-radius:8px;">' +
-             '<a class="photo-link" href="' + url + '" target="_blank" style="display:block; margin-bottom:10px;">🔗 查看原圖 (Drive)</a>';
-    }).join('') +
-  '</div>';
-} else {
-  photoSection = '<div id="photo-result"></div>';
-}
+  // ★ 修正④：陣列判斷正確，URL 直接插入不經 esc()
+  var photoSection = '';
+  if (Array.isArray(a.photo) && a.photo.length > 0) {
+    var photoItems = a.photo.map(function (url) {
+      return '<img src="' + url + '" ' +
+             'style="width:100%;border-radius:8px;margin-bottom:6px;display:block;" ' +
+             'onerror="this.style.display=\'none\'" alt="照片">' +
+             // ★ 修正⑤：<a> 的 href 也不能 esc()，否則 & 變 &amp; 點連結會 404
+             '<a class="photo-link" href="' + url + '" target="_blank" ' +
+             'style="display:block;margin-bottom:12px;">🔗 查看原圖 (Drive)</a>';
+    }).join('');
+    photoSection = '<div id="photo-result" class="photo-result-wrap">' + photoItems + '</div>';
+  } else {
+    photoSection = '<div id="photo-result"></div>';
+  }
 
   var memberOpts = CONFIG.MEMBERS.map(function (m) {
-    return '<option value="' + m + '"' + ((a.assignee||'').trim()===m?' selected':'') + '>' + m + '</option>';
+    return '<option value="' + m + '"' + ((a.assignee||'').trim()===m ? ' selected' : '') + '>' + m + '</option>';
   }).join('');
 
   return (
@@ -1685,7 +1661,7 @@ if (Array.isArray(a.photo) && a.photo.length > 0) {
     '<div><label class="fl">盤點狀態</label>' +
       '<div class="status-grid">' +
         statusOpts.map(function (o) {
-          return '<div class="status-opt ' + (status===o.v ? o.cls : '') + '" ' +
+          return '<div class="status-opt ' + (status === o.v ? o.cls : '') + '" ' +
             'data-v="' + o.v + '" data-cls="' + o.cls + '" onclick="pickStatus(this)">' +
             o.label + '</div>';
         }).join('') +
@@ -1700,7 +1676,7 @@ if (Array.isArray(a.photo) && a.photo.length > 0) {
         ' ondrop="handleDrop(event)">' +
         '<input type="file" accept="image/*" capture="environment" onchange="handlePhotoFile(this.files[0])">' +
         '<div class="photo-drop-icon">📷</div>' +
-        '<div class="photo-drop-text">' + (a.photo ? '重新拍攝或更換照片' : '點擊拍照 / 選擇圖片') + '</div>' +
+        '<div class="photo-drop-text">' + (a.photo && a.photo.length ? '重新拍攝或更換照片' : '點擊拍照 / 選擇圖片') + '</div>' +
         '<div class="photo-drop-sub">照片將上傳至 Google Drive，存連結非 Base64</div>' +
       '</div>' +
       '<div id="upload-status"></div></div>' +
